@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.attachment import Attachment
-from app.models.audit_log import AuditLog
 from app.models.contract import Contract
+from app.services.audit import write_audit
 
 # ---------------------------------------------------------------------------
 # Validation constants
@@ -158,7 +158,7 @@ def save_attachment(
     db.commit()
     db.refresh(attachment)
 
-    _write_audit(
+    write_audit(
         db, user_id, "attachment_upload", "attachment", attachment.id,
         {
             "contract_id": contract_id,
@@ -191,7 +191,7 @@ def delete_attachment(
     except OSError:
         pass  # File already gone — still allow DB cleanup
 
-    _write_audit(
+    write_audit(
         db, user_id, "attachment_delete", "attachment", attachment.id,
         {
             "contract_id": attachment.contract_id,
@@ -220,23 +220,3 @@ def _resolve_mime_type(file: UploadFile, ext: str) -> str:
         ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     }
     return mime_map.get(ext, "application/octet-stream")
-
-
-def _write_audit(
-    db: Session,
-    user_id: int,
-    action: str,
-    target_type: str | None = None,
-    target_id: int | None = None,
-    detail: dict | None = None,
-) -> None:
-    """Write an audit log entry directly to the database."""
-    log = AuditLog(
-        user_id=user_id,
-        action=action,
-        target_type=target_type,
-        target_id=target_id,
-        detail=json.dumps(detail, ensure_ascii=False) if detail else None,
-    )
-    db.add(log)
-    db.commit()

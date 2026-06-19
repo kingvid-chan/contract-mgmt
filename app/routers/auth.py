@@ -9,6 +9,7 @@ from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.auth import LoginRequest
 from app.schemas.user import UserResponse
+from app.services.audit import write_audit
 from app.services.auth import authenticate_user, login_user, logout_user
 
 router = APIRouter(prefix=f"{settings.base_path}/api/auth", tags=["auth"])
@@ -33,6 +34,11 @@ def login(
             detail="账号已被禁用",
         )
     login_user(request, user)
+    write_audit(
+        db, user.id, "auth_login", "user", user.id,
+        {"username": user.username},
+        ip_address=request.client.host if request.client else None,
+    )
     return {
         "user": UserResponse.model_validate(user).model_dump(),
         "message": "登录成功",
@@ -40,9 +46,18 @@ def login(
 
 
 @router.post("/logout", response_model=dict)
-def logout(request: Request):
+def logout(
+    request: Request,
+    db: Session = Depends(get_db),
+):
     """Clear the session cookie."""
+    user_id = request.session.get("user_id")
     logout_user(request)
+    if user_id is not None:
+        write_audit(
+            db, user_id, "auth_logout", "user", user_id,
+            ip_address=request.client.host if request.client else None,
+        )
     return {"message": "已登出"}
 
 

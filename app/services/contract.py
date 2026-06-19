@@ -6,7 +6,6 @@ from datetime import datetime
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.audit_log import AuditLog
 from app.models.contract import Contract
 from app.models.user import User
 from app.schemas.contract import (
@@ -15,6 +14,7 @@ from app.schemas.contract import (
     ContractUpdate,
     StatusChange,
 )
+from app.services.audit import write_audit
 
 # ---------------------------------------------------------------------------
 # Status transition map
@@ -170,7 +170,7 @@ def create_contract(
     db.commit()
     db.refresh(contract)
 
-    _write_audit(
+    write_audit(
         db, current_user.id, "contract_create", "contract", contract.id,
         {"title": contract.title, "contract_no": contract.contract_no},
     )
@@ -211,7 +211,7 @@ def update_contract(
         contract.updated_at = datetime.utcnow().isoformat()
         db.commit()
         db.refresh(contract)
-        _write_audit(
+        write_audit(
             db, current_user.id, "contract_update", "contract", contract.id,
             {"changed": list(changed.keys())},
         )
@@ -234,7 +234,7 @@ def delete_contract(
         if contract.status != "draft":
             raise PermissionError("只能删除 draft 状态的合同")
 
-    _write_audit(
+    write_audit(
         db, current_user.id, "contract_delete", "contract", contract.id,
         {"title": contract.title, "contract_no": contract.contract_no},
     )
@@ -272,7 +272,7 @@ def change_status(
     db.commit()
     db.refresh(contract)
 
-    _write_audit(
+    write_audit(
         db, current_user.id, "contract_status_change", "contract", contract.id,
         {
             "previous_status": previous_status,
@@ -287,28 +287,3 @@ def change_status(
         "previous_status": previous_status,
         "message": f"状态已更新为 {target_status}",
     }
-
-
-# ---------------------------------------------------------------------------
-# Audit helper (to be replaced by app/services/audit.py in T015)
-# ---------------------------------------------------------------------------
-
-
-def _write_audit(
-    db: Session,
-    user_id: int,
-    action: str,
-    target_type: str | None = None,
-    target_id: int | None = None,
-    detail: dict | None = None,
-) -> None:
-    """Write an audit log entry directly to the database."""
-    log = AuditLog(
-        user_id=user_id,
-        action=action,
-        target_type=target_type,
-        target_id=target_id,
-        detail=json.dumps(detail, ensure_ascii=False) if detail else None,
-    )
-    db.add(log)
-    db.commit()

@@ -6,9 +6,9 @@ from datetime import datetime
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
+from app.services.audit import write_audit
 from app.services.auth import hash_password, verify_password
 
 
@@ -82,7 +82,7 @@ def create_user(db: Session, data: UserCreate, current_user: User) -> User:
     db.commit()
     db.refresh(user)
 
-    _write_audit(db, current_user.id, "user_create", "user", user.id,
+    write_audit(db, current_user.id, "user_create", "user", user.id,
                  {"username": user.username, "role": user.role})
     return user
 
@@ -113,7 +113,7 @@ def update_user(
         user.updated_at = datetime.utcnow().isoformat()
         db.commit()
         db.refresh(user)
-        _write_audit(db, current_user.id, "user_update", "user", user.id,
+        write_audit(db, current_user.id, "user_update", "user", user.id,
                      {"changed": changed})
 
     return user
@@ -131,7 +131,7 @@ def toggle_user_status(db: Session, user_id: int, current_user: User) -> User:
     db.commit()
     db.refresh(user)
 
-    _write_audit(
+    write_audit(
         db, current_user.id, "user_toggle_status", "user", user.id,
         {"is_active": new_state},
     )
@@ -149,7 +149,7 @@ def change_password(
     user.updated_at = datetime.utcnow().isoformat()
     db.commit()
 
-    _write_audit(db, user.id, "password_change", "user", user.id)
+    write_audit(db, user.id, "password_change", "user", user.id)
 
 
 def reset_password(
@@ -164,32 +164,8 @@ def reset_password(
     user.updated_at = datetime.utcnow().isoformat()
     db.commit()
 
-    _write_audit(
+    write_audit(
         db, current_user.id, "user_reset_password", "user", user.id,
         {"reset_by": current_user.username},
     )
 
-
-# ---------------------------------------------------------------------------
-# Audit helper (to be replaced by app/services/audit.py in T015)
-# ---------------------------------------------------------------------------
-
-
-def _write_audit(
-    db: Session,
-    user_id: int,
-    action: str,
-    target_type: str | None = None,
-    target_id: int | None = None,
-    detail: dict | None = None,
-) -> None:
-    """Write an audit log entry directly to the database."""
-    log = AuditLog(
-        user_id=user_id,
-        action=action,
-        target_type=target_type,
-        target_id=target_id,
-        detail=json.dumps(detail, ensure_ascii=False) if detail else None,
-    )
-    db.add(log)
-    db.commit()
