@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, require_admin
+from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.services import contract as contract_service
 from app.services import user as user_service
@@ -70,6 +71,12 @@ def users_edit(
     current_user: User = Depends(require_admin),
 ):
     u = user_service.get_user_by_id(db, user_id)
+    if u is None:
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"current_user": current_user, "error": "用户不存在"},
+            status_code=404,
+        )
     return templates.TemplateResponse(
         request, "users/form.html",
         {"current_user": current_user, "user": u},
@@ -124,6 +131,18 @@ def contracts_edit(
     current_user: User = Depends(get_current_user),
 ):
     c = contract_service.get_contract_by_id(db, contract_id)
+    if c is None:
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"current_user": current_user, "error": "合同不存在"},
+            status_code=404,
+        )
+    # Redirect to detail if contract is not in editable status
+    if c.status not in ("draft", "pending_review"):
+        return RedirectResponse(
+            url=f"{settings.base_path}/contracts/{contract_id}",
+            status_code=302,
+        )
     return templates.TemplateResponse(
         request, "contracts/form.html",
         {"current_user": current_user, "contract": c},
@@ -138,7 +157,12 @@ def contracts_detail(
     current_user: User = Depends(get_current_user),
 ):
     detail = contract_service.get_contract_detail(db, contract_id)
-    from app.models.audit_log import AuditLog
+    if detail is None:
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"current_user": current_user, "error": "合同不存在"},
+            status_code=404,
+        )
     audit_logs = (
         db.query(AuditLog)
         .filter(
