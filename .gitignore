@@ -9,3 +9,7 @@ node_modules/
 dist/
 process-log/
 .paused
+*.db
+uploads/*
+!uploads/.gitkeep
+.pytest_cache/
