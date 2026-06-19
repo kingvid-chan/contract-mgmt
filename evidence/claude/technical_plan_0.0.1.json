@@ -1,0 +1,824 @@
+{
+  "meta": {
+    "version": "0.0.1",
+    "project": "contract-mgmt",
+    "project_name": "合同管理系统",
+    "created_by": "Claude (technical-expert)",
+    "created_at": "2026-06-20T00:00:00+00:00",
+    "base_path": "/projects/contract-mgmt/"
+  },
+
+  "project_structure": {
+    "description": "合同管理系统项目目录结构，遵循 FastAPI + Jinja2 模板渲染 + 原生 CSS/JS 的交付基线",
+    "tree": {
+      "contract-mgmt/": {
+        "app/": {
+          "__init__.py": "应用包初始化",
+          "main.py": "FastAPI 应用入口，注册路由、中间件、静态文件挂载",
+          "config.py": "从 .env 加载配置（pydantic-settings）",
+          "database.py": "SQLAlchemy engine + session 管理 + Base",
+          "dependencies.py": "FastAPI Depends：获取当前用户、权限校验",
+          "models/": {
+            "__init__.py": "",
+            "user.py": "User ORM 模型",
+            "contract.py": "Contract ORM 模型",
+            "attachment.py": "Attachment ORM 模型",
+            "audit_log.py": "AuditLog ORM 模型"
+          },
+          "schemas/": {
+            "__init__.py": "",
+            "user.py": "User Create/Update/Response Pydantic 模型",
+            "contract.py": "Contract Create/Update/Response Pydantic 模型",
+            "attachment.py": "Attachment Response Pydantic 模型",
+            "auth.py": "LoginRequest / TokenResponse Pydantic 模型"
+          },
+          "routers/": {
+            "__init__.py": "",
+            "auth.py": "/api/auth/* 路由",
+            "users.py": "/api/users/* 路由",
+            "contracts.py": "/api/contracts/* 路由",
+            "attachments.py": "/api/attachments/* 路由",
+            "pages.py": "Jinja2 页面路由（非 API）"
+          },
+          "services/": {
+            "__init__.py": "",
+            "auth.py": "认证逻辑：登录校验、密码哈希、会话管理",
+            "user.py": "用户 CRUD + 状态管理",
+            "contract.py": "合同 CRUD + 状态流转校验",
+            "attachment.py": "附件上传/下载/删除 + 类型/大小校验",
+            "audit.py": "审计日志写入"
+          },
+          "templates/": {
+            "base.html": "基础布局（导航、flash 消息、CSS/JS 引用）",
+            "login.html": "登录页",
+            "users/": {
+              "list.html": "用户列表（管理员）",
+              "form.html": "用户创建/编辑表单"
+            },
+            "contracts/": {
+              "list.html": "合同列表（搜索、筛选、分页）",
+              "form.html": "合同创建/编辑表单",
+              "detail.html": "合同详情（信息、附件、状态操作）"
+            }
+          },
+          "static/": {
+            "css/": {
+              "style.css": "全局样式"
+            },
+            "js/": {
+              "app.js": "前端交互（确认弹窗、文件上传预览、状态操作确认）"
+            }
+          },
+          "middleware/": {
+            "__init__.py": "",
+            "cache_control.py": "为 HTML 响应添加 Cache-Control: no-cache 头"
+          }
+        },
+        "migrations/": {
+          "001_initial_schema.sql": "建表 DDL",
+          "002_seed_data.sql": "演示账号 + 初始数据"
+        },
+        "uploads/": {
+          ".gitkeep": "附件存储目录（运行时创建，.gitignore 排除上传文件）"
+        },
+        "tests/": {
+          "__init__.py": "",
+          "conftest.py": "pytest fixtures（TestClient、测试数据库、演示账号）",
+          "test_auth.py": "登录/登出/会话测试",
+          "test_users.py": "用户 CRUD + 权限测试",
+          "test_contracts.py": "合同 CRUD + 状态流转测试",
+          "test_attachments.py": "附件上传/下载/类型校验/大小校验测试"
+        },
+        ".env.example": "环境变量模板",
+        ".gitignore": "排除 .env、uploads/*（不含 .gitkeep）、__pycache__、*.db",
+        "requirements.txt": "Python 依赖清单",
+        "run.py": "开发服务器启动脚本：uvicorn app.main:app --reload"
+      }
+    }
+  },
+
+  "database_design": {
+    "engine": "SQLite",
+    "orm": "SQLAlchemy 2.0 ORM",
+    "migration_tool": "手动 SQL 迁移脚本（migrations/ 目录），按序号执行",
+    "tables": {
+      "users": {
+        "description": "系统用户表，存储登录凭证和角色信息",
+        "columns": {
+          "id": { "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          "username": { "type": "TEXT", "constraints": "UNIQUE NOT NULL", "example": "admin" },
+          "password_hash": { "type": "TEXT", "constraints": "NOT NULL", "example": "$2b$12$..." },
+          "display_name": { "type": "TEXT", "constraints": "NOT NULL", "example": "管理员" },
+          "role": { "type": "TEXT", "constraints": "NOT NULL CHECK(role IN ('admin','user'))", "default": "user" },
+          "is_active": { "type": "INTEGER", "constraints": "NOT NULL DEFAULT 1", "description": "1=启用, 0=禁用" },
+          "created_at": { "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" },
+          "updated_at": { "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        },
+        "indexes": ["username UNIQUE"],
+        "seed_data": [
+          { "username": "admin", "password": "admin123", "display_name": "管理员", "role": "admin", "is_active": 1 },
+          { "username": "user", "password": "user123", "display_name": "普通用户", "role": "user", "is_active": 1 }
+        ]
+      },
+
+      "contracts": {
+        "description": "合同主表，存储合同元数据和内容",
+        "columns": {
+          "id": { "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          "title": { "type": "TEXT", "constraints": "NOT NULL", "example": "2026年度采购合同" },
+          "contract_no": { "type": "TEXT", "constraints": "UNIQUE NOT NULL", "example": "HT-2026-001" },
+          "parties": { "type": "TEXT", "constraints": "NOT NULL", "description": "JSON 数组存储签约方名称，如 [\"甲方公司\",\"乙方公司\"]" },
+          "amount": { "type": "REAL", "constraints": "NOT NULL", "example": 150000.00 },
+          "status": {
+            "type": "TEXT",
+            "constraints": "NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','pending_review','active','expired','terminated'))",
+            "description": "合同状态，流转规则见 status_transitions"
+          },
+          "sign_date": { "type": "TEXT", "constraints": "", "description": "签订日期，ISO 8601 格式" },
+          "expiry_date": { "type": "TEXT", "constraints": "", "description": "到期日期，ISO 8601 格式" },
+          "content": { "type": "TEXT", "constraints": "", "description": "合同正文/条款内容" },
+          "created_by": { "type": "INTEGER", "constraints": "NOT NULL REFERENCES users(id)" },
+          "created_at": { "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" },
+          "updated_at": { "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        },
+        "indexes": ["contract_no UNIQUE", "status", "created_by"],
+        "status_transitions": {
+          "description": "合法状态流转映射",
+          "draft": ["pending_review", "terminated"],
+          "pending_review": ["active", "draft"],
+          "active": ["expired", "terminated"],
+          "expired": [],
+          "terminated": []
+        }
+      },
+
+      "attachments": {
+        "description": "合同附件表，记录上传文件元数据",
+        "columns": {
+          "id": { "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          "contract_id": { "type": "INTEGER", "constraints": "NOT NULL REFERENCES contracts(id) ON DELETE CASCADE" },
+          "filename": { "type": "TEXT", "constraints": "NOT NULL", "description": "存储文件名（UUID 重命名）" },
+          "original_name": { "type": "TEXT", "constraints": "NOT NULL", "description": "用户上传时的原始文件名" },
+          "file_size": { "type": "INTEGER", "constraints": "NOT NULL", "description": "文件大小（字节），最大 10MB" },
+          "mime_type": { "type": "TEXT", "constraints": "NOT NULL", "description": "MIME 类型，如 application/pdf" },
+          "uploaded_by": { "type": "INTEGER", "constraints": "NOT NULL REFERENCES users(id)" },
+          "created_at": { "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        },
+        "indexes": ["contract_id"],
+        "allowed_mime_types": [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ],
+        "allowed_extensions": [".pdf", ".doc", ".docx"],
+        "max_size_bytes": 10485760
+      },
+
+      "audit_logs": {
+        "description": "审计日志表，记录所有关键操作",
+        "columns": {
+          "id": { "type": "INTEGER", "constraints": "PRIMARY KEY AUTOINCREMENT" },
+          "user_id": { "type": "INTEGER", "constraints": "NOT NULL REFERENCES users(id)" },
+          "action": { "type": "TEXT", "constraints": "NOT NULL", "example": "contract_create" },
+          "target_type": { "type": "TEXT", "constraints": "", "description": "操作目标类型：user/contract/attachment" },
+          "target_id": { "type": "INTEGER", "constraints": "", "description": "操作目标 ID" },
+          "detail": { "type": "TEXT", "constraints": "", "description": "JSON 格式的操作详情" },
+          "ip_address": { "type": "TEXT", "constraints": "", "description": "客户端 IP" },
+          "created_at": { "type": "TEXT", "constraints": "NOT NULL DEFAULT (datetime('now'))" }
+        },
+        "indexes": ["user_id", "action", "created_at"],
+        "tracked_actions": [
+          "login", "logout", "password_change",
+          "user_create", "user_update", "user_toggle_status",
+          "contract_create", "contract_update", "contract_delete",
+          "contract_status_change",
+          "attachment_upload", "attachment_delete"
+        ]
+      }
+    }
+  },
+
+  "api_design": {
+    "base_prefix": "/projects/contract-mgmt/api",
+    "content_type": "application/json（文件上传使用 multipart/form-data）",
+    "authentication": "Session Cookie（登录后由服务器设置 HTTP-only session cookie）",
+    "endpoints": {
+      "auth": {
+        "prefix": "/projects/contract-mgmt/api/auth",
+        "routes": [
+          {
+            "method": "POST",
+            "path": "/login",
+            "summary": "用户登录",
+            "auth_required": false,
+            "request_body": {
+              "username": "string, 必填",
+              "password": "string, 必填"
+            },
+            "response_200": {
+              "user": { "id": 1, "username": "admin", "display_name": "管理员", "role": "admin" },
+              "message": "登录成功"
+            },
+            "response_401": { "detail": "用户名或密码错误" },
+            "response_403": { "detail": "账号已被禁用" }
+          },
+          {
+            "method": "POST",
+            "path": "/logout",
+            "summary": "用户登出",
+            "auth_required": true,
+            "response_200": { "message": "已登出" }
+          },
+          {
+            "method": "GET",
+            "path": "/me",
+            "summary": "获取当前登录用户信息",
+            "auth_required": true,
+            "response_200": {
+              "id": 1, "username": "admin", "display_name": "管理员", "role": "admin", "is_active": true
+            }
+          }
+        ]
+      },
+
+      "users": {
+        "prefix": "/projects/contract-mgmt/api/users",
+        "description": "用户管理（admin 角色可访问 CRUD；所有用户可修改自己密码）",
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/",
+            "summary": "用户列表",
+            "auth_required": true,
+            "roles": ["admin"],
+            "response_200": {
+              "users": [
+                { "id": 1, "username": "admin", "display_name": "管理员", "role": "admin", "is_active": true, "created_at": "..." }
+              ]
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/",
+            "summary": "创建用户",
+            "auth_required": true,
+            "roles": ["admin"],
+            "request_body": {
+              "username": "string, 必填, 3-50字符",
+              "password": "string, 必填, 最少6字符",
+              "display_name": "string, 必填",
+              "role": "string, 必填, enum: admin|user"
+            },
+            "response_201": { "id": 3, "username": "newuser", "display_name": "新用户", "role": "user", "is_active": true },
+            "response_409": { "detail": "用户名已存在" }
+          },
+          {
+            "method": "GET",
+            "path": "/{user_id}",
+            "summary": "获取单个用户",
+            "auth_required": true,
+            "roles": ["admin"],
+            "response_200": { "id": 1, "username": "admin", "display_name": "管理员", "role": "admin", "is_active": true },
+            "response_404": { "detail": "用户不存在" }
+          },
+          {
+            "method": "PUT",
+            "path": "/{user_id}",
+            "summary": "编辑用户信息",
+            "auth_required": true,
+            "roles": ["admin"],
+            "request_body": {
+              "display_name": "string, 可选",
+              "role": "string, 可选, enum: admin|user"
+            },
+            "response_200": { "id": 1, "username": "admin", "display_name": "新名称", "role": "admin", "is_active": true }
+          },
+          {
+            "method": "PUT",
+            "path": "/{user_id}/status",
+            "summary": "切换用户启用/禁用状态",
+            "auth_required": true,
+            "roles": ["admin"],
+            "request_body": { "is_active": "boolean, 必填" },
+            "response_200": { "id": 1, "is_active": false, "message": "用户已禁用" }
+          },
+          {
+            "method": "PUT",
+            "path": "/me/password",
+            "summary": "修改自己的密码",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "request_body": {
+              "current_password": "string, 必填",
+              "new_password": "string, 必填, 最少6字符"
+            },
+            "response_200": { "message": "密码修改成功" },
+            "response_400": { "detail": "当前密码错误" }
+          }
+        ]
+      },
+
+      "contracts": {
+        "prefix": "/projects/contract-mgmt/api/contracts",
+        "description": "合同 CRUD + 状态流转",
+        "routes": [
+          {
+            "method": "GET",
+            "path": "/",
+            "summary": "合同列表（搜索、筛选、分页）",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "query_params": {
+              "search": "string, 可选, 模糊匹配 title 和 contract_no",
+              "status": "string, 可选, 按状态筛选",
+              "page": "integer, 默认 1",
+              "page_size": "integer, 默认 20, 最大 100"
+            },
+            "response_200": {
+              "contracts": [
+                {
+                  "id": 1, "title": "采购合同", "contract_no": "HT-2026-001",
+                  "parties": ["甲方", "乙方"], "amount": 150000.0, "status": "draft",
+                  "sign_date": null, "expiry_date": null,
+                  "created_by": 1, "created_at": "...", "updated_at": "..."
+                }
+              ],
+              "total": 42, "page": 1, "page_size": 20
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/",
+            "summary": "创建合同",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "request_body": {
+              "title": "string, 必填",
+              "contract_no": "string, 必填, 唯一",
+              "parties": ["string 数组, 必填, 至少2个签约方"],
+              "amount": "number, 必填, >=0",
+              "sign_date": "string, 可选, ISO 8601 日期",
+              "expiry_date": "string, 可选, ISO 8601 日期",
+              "content": "string, 可选"
+            },
+            "response_201": {
+              "id": 1, "title": "...", "contract_no": "...", "status": "draft",
+              "parties": ["..."], "amount": 150000.0,
+              "sign_date": null, "expiry_date": null, "content": null,
+              "created_by": 1, "created_at": "...", "updated_at": "..."
+            },
+            "response_409": { "detail": "合同编号已存在" }
+          },
+          {
+            "method": "GET",
+            "path": "/{contract_id}",
+            "summary": "合同详情（含附件列表）",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "response_200": {
+              "id": 1, "title": "...", "contract_no": "...", "status": "draft",
+              "parties": ["..."], "amount": 150000.0,
+              "sign_date": null, "expiry_date": null, "content": "...",
+              "created_by": 1, "created_by_name": "admin",
+              "created_at": "...", "updated_at": "...",
+              "attachments": [
+                { "id": 1, "original_name": "合同附件.pdf", "file_size": 204800, "mime_type": "application/pdf", "uploaded_by": 1, "created_at": "..." }
+              ],
+              "allowed_transitions": ["pending_review", "terminated"]
+            },
+            "response_404": { "detail": "合同不存在" }
+          },
+          {
+            "method": "PUT",
+            "path": "/{contract_id}",
+            "summary": "编辑合同（仅 draft 和 pending_review 状态可编辑核心字段）",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "request_body": {
+              "title": "string, 可选",
+              "parties": ["string 数组, 可选"],
+              "amount": "number, 可选, >=0",
+              "sign_date": "string, 可选",
+              "expiry_date": "string, 可选",
+              "content": "string, 可选"
+            },
+            "response_200": { "...": "更新后的合同对象" },
+            "response_400": { "detail": "当前状态不允许编辑" }
+          },
+          {
+            "method": "DELETE",
+            "path": "/{contract_id}",
+            "summary": "删除合同（仅 admin 可执行，或创建者在 draft 状态可删除）",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "response_200": { "message": "合同已删除" },
+            "response_403": { "detail": "无权删除此合同" }
+          },
+          {
+            "method": "POST",
+            "path": "/{contract_id}/status",
+            "summary": "变更合同状态",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "request_body": {
+              "status": "string, 必填, 目标状态",
+              "comment": "string, 可选, 状态变更备注"
+            },
+            "response_200": {
+              "id": 1, "status": "pending_review",
+              "previous_status": "draft",
+              "message": "状态已更新为 pending_review"
+            },
+            "response_400": { "detail": "不允许从 draft 变更为 expired" },
+            "valid_transitions": {
+              "draft": ["pending_review", "terminated"],
+              "pending_review": ["active", "draft"],
+              "active": ["expired", "terminated"],
+              "expired": [],
+              "terminated": []
+            }
+          }
+        ]
+      },
+
+      "attachments": {
+        "prefix": "/projects/contract-mgmt/api",
+        "description": "附件上传/下载/删除",
+        "routes": [
+          {
+            "method": "POST",
+            "path": "/contracts/{contract_id}/attachments",
+            "summary": "上传附件",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "content_type": "multipart/form-data",
+            "request_body": {
+              "file": "binary, 必填, 文件（pdf/doc/docx），≤10MB"
+            },
+            "response_201": {
+              "id": 1, "contract_id": 1, "original_name": "合同附件.pdf",
+              "file_size": 204800, "mime_type": "application/pdf",
+              "uploaded_by": 1, "created_at": "..."
+            },
+            "response_400": {
+              "type_invalid": { "detail": "不支持的文件类型，仅允许 PDF、DOC、DOCX" },
+              "size_exceeded": { "detail": "文件大小超过 10MB 限制" }
+            },
+            "response_404": { "detail": "合同不存在" }
+          },
+          {
+            "method": "GET",
+            "path": "/attachments/{attachment_id}/download",
+            "summary": "下载附件",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "response_200": "文件流，Content-Disposition: attachment",
+            "response_404": { "detail": "附件不存在" }
+          },
+          {
+            "method": "DELETE",
+            "path": "/attachments/{attachment_id}",
+            "summary": "删除附件",
+            "auth_required": true,
+            "roles": ["admin", "user"],
+            "response_200": { "message": "附件已删除" },
+            "response_404": { "detail": "附件不存在" }
+          }
+        ]
+      }
+    }
+  },
+
+  "frontend_pages": {
+    "render_engine": "Jinja2 (FastAPI 内置 Jinja2Templates)",
+    "base_template": "base.html（导航栏、flash 消息、CSS/JS 引用、用户信息展示）",
+    "version_token": "?v=0.0.1（所有静态资源 URL 携带版本令牌）",
+    "cache_control": "所有 HTML 页面由服务器中间件设置 Cache-Control: no-cache 响应头",
+    "pages": [
+      {
+        "route": "GET /projects/contract-mgmt/login",
+        "template": "login.html",
+        "auth_required": false,
+        "description": "登录页面：用户名+密码表单，提交到 POST /api/auth/login。登录成功跳转 /contracts",
+        "ui_elements": ["用户名输入框", "密码输入框", "登录按钮", "错误提示区域"]
+      },
+      {
+        "route": "GET /projects/contract-mgmt/users",
+        "template": "users/list.html",
+        "auth_required": true,
+        "roles": ["admin"],
+        "description": "用户列表页：表格展示所有用户，支持创建新用户、编辑、启用/禁用操作",
+        "ui_elements": ["用户表格（用户名、显示名、角色、状态、创建时间）", "创建用户按钮", "编辑按钮", "启用/禁用切换按钮"]
+      },
+      {
+        "route": "GET /projects/contract-mgmt/users/new",
+        "template": "users/form.html",
+        "auth_required": true,
+        "roles": ["admin"],
+        "description": "创建用户表单页",
+        "ui_elements": ["用户名输入框", "显示名输入框", "密码输入框", "角色下拉选择", "提交按钮"]
+      },
+      {
+        "route": "GET /projects/contract-mgmt/users/{id}/edit",
+        "template": "users/form.html",
+        "auth_required": true,
+        "roles": ["admin"],
+        "description": "编辑用户表单页（复用 form.html，通过用户 ID 区分创建/编辑模式）",
+        "ui_elements": ["同创建页，但预填现有数据", "密码修改部分（可选）"]
+      },
+      {
+        "route": "GET /projects/contract-mgmt/contracts",
+        "template": "contracts/list.html",
+        "auth_required": true,
+        "roles": ["admin", "user"],
+        "description": "合同列表页：搜索框、状态筛选下拉、分页表格",
+        "ui_elements": ["搜索框（标题/合同号）", "状态筛选下拉", "合同表格（标题、编号、金额、状态、日期、操作）", "分页控件", "新建合同按钮"]
+      },
+      {
+        "route": "GET /projects/contract-mgmt/contracts/new",
+        "template": "contracts/form.html",
+        "auth_required": true,
+        "roles": ["admin", "user"],
+        "description": "创建合同表单页",
+        "ui_elements": ["标题输入框", "合同编号输入框", "签约方动态输入（支持添加/删除）", "金额输入框", "签订日期选择器", "到期日期选择器", "合同内容文本域", "提交按钮"]
+      },
+      {
+        "route": "GET /projects/contract-mgmt/contracts/{id}/edit",
+        "template": "contracts/form.html",
+        "auth_required": true,
+        "roles": ["admin", "user"],
+        "description": "编辑合同表单页（复用 form.html）",
+        "ui_elements": ["同创建页，预填数据", "仅 draft/pending_review 状态下可编辑核心字段"]
+      },
+      {
+        "route": "GET /projects/contract-mgmt/contracts/{id}",
+        "template": "contracts/detail.html",
+        "auth_required": true,
+        "roles": ["admin", "user"],
+        "description": "合同详情页：完整信息展示 + 附件管理 + 状态操作按钮",
+        "ui_elements": [
+          "合同完整信息（标题、编号、签约方、金额、状态标签、日期、内容）",
+          "附件列表（文件名、大小、上传时间、下载/删除按钮）",
+          "附件上传按钮（触发文件选择）",
+          "状态操作按钮组（根据当前状态显示允许的操作：提交审核、审核通过、退回、终止等）",
+          "编辑按钮（draft/pending_review 状态）",
+          "删除按钮（admin 或 draft 状态创建者）"
+        ]
+      }
+    ],
+    "redirect_rules": [
+      { "condition": "未登录访问受保护页面", "action": "重定向到 /login?next=<原路径>" },
+      { "condition": "无权限操作（非 admin 访问 /users）", "action": "返回 403 页面" },
+      { "condition": "API 返回 401", "action": "前端拦截，跳转登录页" }
+    ]
+  },
+
+  "authentication_scheme": {
+    "method": "基于 Session 的服务端认证",
+    "session_store": "内存字典（开发阶段）/ 后续可扩展为 Redis 或数据库 session 表",
+    "password_hashing": "bcrypt（passlib[bcrypt] 库）",
+    "cookie": {
+      "name": "session_id",
+      "attributes": {
+        "httponly": true,
+        "samesite": "lax",
+        "secure": false,
+        "path": "/projects/contract-mgmt/"
+      }
+    },
+    "session_ttl": "24 小时（无操作过期）",
+    "middleware": "FastAPI 中间件：从 Cookie 获取 session_id → 查找 session → 注入 request.state.current_user",
+    "login_flow": [
+      "客户端 POST /api/auth/login 提交 username + password",
+      "服务端查询用户 → 校验 bcrypt hash → 校验 is_active",
+      "生成随机 session_id（uuid4）→ 存入内存 session_store",
+      "Set-Cookie: session_id=<uuid>; HttpOnly; Path=/projects/contract-mgmt/",
+      "返回用户信息 JSON"
+    ],
+    "logout_flow": [
+      "客户端 POST /api/auth/logout",
+      "服务端从 session_store 移除 session_id",
+      "Set-Cookie: session_id=; Max-Age=0（清除 Cookie）"
+    ],
+    "authorization": [
+      "api_routes: 从 request.state.current_user 读取角色，按路由定义的 roles 列表校验",
+      "page_routes: 同 API 路由校验，未登录重定向，无权限返回 403",
+      "API 端点中通过 Depends(get_current_active_user) 获取当前用户对象"
+    ]
+  },
+
+  "attachment_storage_scheme": {
+    "storage_type": "本地文件系统",
+    "storage_path": "uploads/（项目根目录下，可通过配置覆盖）",
+    "filename_strategy": "UUID4 + 保留原始扩展名，例如 a1b2c3d4-....pdf",
+    "upload_flow": [
+      "前端通过 multipart/form-data 提交文件",
+      "后端校验 MIME 类型（application/pdf / application/msword / application/vnd.openxmlformats-officedocument.wordprocessingml.document）",
+      "后端校验文件扩展名（.pdf / .doc / .docx）",
+      "后端校验文件大小（≤ 10MB = 10,485,760 bytes）",
+      "生成 UUID 文件名，写入 uploads/ 目录",
+      "在 attachments 表写入元数据记录",
+      "写入审计日志"
+    ],
+    "download_flow": [
+      "GET /api/attachments/{id}/download",
+      "从数据库查询附件记录 → 校验权限（所属合同可见）",
+      "设置 Content-Disposition: attachment; filename=\"原始文件名\"",
+      "返回 FileResponse 流"
+    ],
+    "security": [
+      "uploads/ 目录不通过静态文件服务暴露",
+      "仅通过 /api/attachments/{id}/download 端点下载",
+      "须登录后才能访问下载端点",
+      ".gitignore 排除 uploads/*（保留 .gitkeep）"
+    ]
+  },
+
+  "key_technical_decisions": [
+    {
+      "decision": "SQLite 作为数据库",
+      "reasoning": [
+        "零配置、零依赖，适合演示和单机部署",
+        "文件存储，备份简单（直接复制 .db 文件）",
+        "SQLAlchemy ORM 完全兼容，后续可无缝切换到 PostgreSQL",
+        "本次迭代范围明确不做多租户/高并发，SQLite 完全够用"
+      ],
+      "alternatives_considered": [
+        { "option": "PostgreSQL", "reason_rejected": "增加运维复杂度，对演示项目过度" },
+        { "option": "纯文件/JSON 存储", "reason_rejected": "不支持复杂查询和事务" }
+      ]
+    },
+    {
+      "decision": "Jinja2 服务端模板渲染（非 SPA）",
+      "reasoning": [
+        "技术选型明确指定 Jinja2 + 原生 CSS/JS",
+        "无前后端分离的 CORS、构建工具链等额外复杂度",
+        "Session Cookie 认证天然适配服务端渲染",
+        "页面渲染在服务端完成，首屏加载更快"
+      ],
+      "alternatives_considered": [
+        { "option": "React/Vue SPA + API", "reason_rejected": "需求明确不做，增加构建工具链复杂度" }
+      ]
+    },
+    {
+      "decision": "Session 认证（非 JWT）",
+      "reasoning": [
+        "服务端渲染页面天然适合 Session 认证",
+        "无需管理 token 刷新、存储等前端逻辑",
+        "HttpOnly Cookie 降低 XSS 风险",
+        "登出即时生效（服务端删除 session）"
+      ],
+      "alternatives_considered": [
+        { "option": "JWT Bearer Token", "reason_rejected": "需要前端管理 token 存储和刷新，增加复杂度；对服务端渲染不够友好" }
+      ]
+    },
+    {
+      "decision": "bcrypt 密码哈希",
+      "reasoning": [
+        "行业标准，抗暴力破解",
+        "passlib 库提供简洁的 Python API",
+        "自动处理 salt 生成和存储"
+      ],
+      "alternatives_considered": [
+        { "option": "SHA-256 + salt", "reason_rejected": "不够安全，容易被 GPU 暴力破解" },
+        { "option": "Argon2", "reason_rejected": "passlib 支持但配置更复杂，bcrypt 足够" }
+      ]
+    },
+    {
+      "decision": "手动 SQL 迁移脚本（非 Alembic）",
+      "reasoning": [
+        "SQLite 的 ALTER TABLE 限制多，手动脚本更可控",
+        "迁移数量少（仅初始 schema + seed data），自动化工具投入产出比低",
+        "脚本按序号命名，执行顺序明确"
+      ],
+      "alternatives_considered": [
+        { "option": "Alembic", "reason_rejected": "SQLite 的 ALTER 限制导致 Alembic 自动生成不可靠" }
+      ]
+    },
+    {
+      "decision": "contract_no 由用户输入（非自动生成）",
+      "reasoning": [
+        "合同编号通常有业务含义和既定规则，自动生成可能不符合实际需求",
+        "通过 UNIQUE 约束保证不重复",
+        "前端表单提供输入提示和格式建议"
+      ]
+    },
+    {
+      "decision": "签约方 parties 存储为 JSON 字符串",
+      "reasoning": [
+        "签约方数量可变（至少2方），JSON 数组存储灵活",
+        "SQLite 支持 JSON 函数（json_extract），后续可做 JSON 查询",
+        "避免额外的关联表"
+      ],
+      "alternatives_considered": [
+        { "option": "独立的 party 表 + 关联表", "reason_rejected": "签约方在本系统中不需要独立管理，增加不必要的复杂度" }
+      ]
+    },
+    {
+      "decision": "附件仅本地文件系统存储",
+      "reasoning": [
+        "单机部署，无需对象存储",
+        "SQLite 不适合存储大文件（Blob 性能差）",
+        "文件系统直接读写效率最高"
+      ],
+      "alternatives_considered": [
+        { "option": "数据库 Blob", "reason_rejected": "SQLite Blob 增大数据库文件，备份恢复慢" },
+        { "option": "阿里云 OSS/S3", "reason_rejected": "增加外部依赖和成本，演示项目不需要" }
+      ]
+    },
+    {
+      "decision": "FastAPI 中间件统一设置 Cache-Control: no-cache",
+      "reasoning": [
+        "Hermes 浏览器验收要求 HTML 文档的 HTTP 响应头必须携带 Cache-Control: no-cache",
+        "不能用 <meta> 标签代替（浏览器忽略其缓存语义）",
+        "编写 ASGI 中间件对 text/html 响应统一添加该头，确保所有页面都满足要求"
+      ]
+    }
+  ],
+
+  "testing_strategy": {
+    "framework": "pytest + httpx (FastAPI TestClient)",
+    "database_strategy": "每个测试函数使用独立的 SQLite 内存数据库或临时文件数据库，测试前创建表+种子数据，测试后销毁",
+    "test_categories": {
+      "test_auth.py": [
+        "正常登录（admin/admin123）",
+        "正常登录（user/user123）",
+        "错误密码登录返回 401",
+        "禁用用户登录返回 403",
+        "不存在的用户登录返回 401",
+        "登出后访问受保护页面返回 401",
+        "未登录访问受保护 API 返回 401"
+      ],
+      "test_users.py": [
+        "admin 可查看用户列表",
+        "admin 可创建新用户",
+        "admin 可编辑用户信息",
+        "admin 可禁用/启用用户",
+        "user 角色无法访问用户管理 API（返回 403）",
+        "创建重复用户名返回 409",
+        "用户可修改自己密码",
+        "修改密码时旧密码错误返回 400"
+      ],
+      "test_contracts.py": [
+        "创建合同成功（自动设为 draft 状态）",
+        "合同列表分页",
+        "按状态筛选合同",
+        "按关键词搜索合同（匹配 title 和 contract_no）",
+        "查看合同详情",
+        "编辑 draft 状态合同",
+        "active 状态合同不可编辑返回 400",
+        "状态流转：draft → pending_review → active → expired（全部合法步骤）",
+        "状态流转：draft → terminated",
+        "状态流转：pending_review → draft（退回）",
+        "非法状态流转返回 400",
+        "合同编号重复返回 409",
+        "admin 可删除合同",
+        "普通用户删除非自己创建的合同返回 403"
+      ],
+      "test_attachments.py": [
+        "上传 PDF 附件成功",
+        "上传 DOC 附件成功",
+        "上传 DOCX 附件成功",
+        "上传非允许类型文件（如 .txt）返回 400",
+        "上传超过 10MB 文件返回 400",
+        "下载附件成功（文件名正确）",
+        "删除附件成功",
+        "未登录无法下载附件"
+      ]
+    },
+    "run_command": "pytest tests/ -v --tb=short"
+  },
+
+  "environment_config": {
+    "env_file": ".env.example",
+    "required_vars": {
+      "DATABASE_URL": { "default": "sqlite:///./contract_mgmt.db", "description": "SQLite 数据库文件路径" },
+      "UPLOAD_DIR": { "default": "./uploads", "description": "附件存储目录" },
+      "SECRET_KEY": { "default": "change-me-in-production", "description": "Session 签名密钥" },
+      "SESSION_TTL_HOURS": { "default": "24", "description": "Session 过期时间（小时）" },
+      "MAX_UPLOAD_SIZE_MB": { "default": "10", "description": "附件上传大小上限（MB）" },
+      "BASE_PATH": { "default": "/projects/contract-mgmt", "description": "应用部署路径前缀" },
+      "APP_VERSION": { "default": "0.0.1", "description": "当前版本号，用于静态资源版本令牌" },
+      "LOG_LEVEL": { "default": "INFO", "description": "日志级别" }
+    },
+    "conda_env": "~/外部需求/.conda/codingagent（复用共享环境，若不存在则自动创建）",
+    "python_version": ">=3.10"
+  },
+
+  "dependencies": {
+    "python_packages": [
+      "fastapi>=0.110.0",
+      "uvicorn[standard]>=0.27.0",
+      "sqlalchemy>=2.0",
+      "jinja2>=3.1",
+      "python-multipart>=0.0.9",
+      "passlib[bcrypt]>=1.7.4",
+      "bcrypt>=4.0.0",
+      "pydantic>=2.0",
+      "pydantic-settings>=2.0",
+      "python-dotenv>=1.0",
+      "pytest>=8.0",
+      "httpx>=0.27.0"
+    ]
+  }
+}
