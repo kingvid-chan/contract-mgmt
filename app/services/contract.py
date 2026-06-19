@@ -188,7 +188,7 @@ def update_contract(
     if contract.status not in EDITABLE_STATUSES:
         raise ValueError("当前状态不允许编辑")
 
-    if data.contract_no:
+    if hasattr(data, "contract_no") and data.contract_no:
         _check_contract_no_unique(db, data.contract_no, exclude_id=contract_id)
 
     changed: dict[str, object] = {}
