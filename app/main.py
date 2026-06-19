@@ -9,7 +9,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app.config import settings
-from app.database import engine, Base, SessionLocal
+from app.database import Base, SessionLocal
+import app.database as db_mod
 from app.middleware.cache_control import CacheControlMiddleware
 from app.models import User, Contract, Attachment, AuditLog  # noqa: F401
 from app.routers import auth as auth_router
@@ -24,7 +25,7 @@ async def lifespan(application: FastAPI):
     """Startup / shutdown lifecycle."""
     # Startup
     os.makedirs(settings.upload_dir, exist_ok=True)
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=db_mod.engine)
     _ensure_demo_accounts()
     yield
     # Shutdown (nothing to clean up)
@@ -34,7 +35,7 @@ def _ensure_demo_accounts() -> None:
     """Insert demo accounts if the users table is empty."""
     from passlib.hash import bcrypt
 
-    db = SessionLocal()
+    db = db_mod.SessionLocal()
     try:
         if db.query(User).count() == 0:
             db.add_all([
