@@ -1,0 +1,682 @@
+{
+  "meta": {
+    "version": "0.0.1",
+    "project": "contract-mgmt",
+    "created_by": "Claude (technical-expert)",
+    "created_at": "2026-06-20T00:00:00+00:00",
+    "total_tasks": 30,
+    "phases": [
+      { "phase": 0, "name": "基础设施与项目骨架", "tasks": ["T001", "T002", "T003", "T004"] },
+      { "phase": 1, "name": "认证系统", "tasks": ["T005", "T006", "T007", "T008"] },
+      { "phase": 2, "name": "用户管理", "tasks": ["T009", "T010"] },
+      { "phase": 3, "name": "合同管理", "tasks": ["T011", "T012"] },
+      { "phase": 4, "name": "附件管理", "tasks": ["T013", "T014"] },
+      { "phase": 5, "name": "审计日志", "tasks": ["T015"] },
+      { "phase": 6, "name": "前端页面与样式", "tasks": ["T016", "T017", "T018", "T019", "T020", "T021", "T022"] },
+      { "phase": 7, "name": "应用组装与启动", "tasks": ["T023"] },
+      { "phase": 8, "name": "自测脚本", "tasks": ["T024", "T025", "T026", "T027", "T028"] },
+      { "phase": 9, "name": "文档同步", "tasks": ["T029", "T030"] }
+    ]
+  },
+
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "项目骨架搭建：目录结构、依赖清单、环境变量、启动脚本",
+      "phase": 0,
+      "description": "创建项目全部目录结构，编写 requirements.txt（含所有 Python 依赖及版本约束）、.env.example（含 8 个环境变量及默认值）、.gitignore（排除 .env、*.db、uploads/*、__pycache__、.pytest_cache）、run.py（uvicorn 启动入口）、app/__init__.py 及所有子包的 __init__.py",
+      "files_to_create": [
+        "requirements.txt",
+        ".env.example",
+        ".gitignore",
+        "run.py",
+        "app/__init__.py",
+        "app/models/__init__.py",
+        "app/schemas/__init__.py",
+        "app/routers/__init__.py",
+        "app/services/__init__.py",
+        "app/middleware/__init__.py",
+        "app/templates/.gitkeep",
+        "app/static/css/.gitkeep",
+        "app/static/js/.gitkeep",
+        "migrations/.gitkeep",
+        "uploads/.gitkeep",
+        "tests/__init__.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": [],
+      "acceptance_criteria": [
+        "项目根目录存在 requirements.txt，包含 fastapi、uvicorn、sqlalchemy、jinja2、python-multipart、passlib[bcrypt]、pydantic、pydantic-settings、python-dotenv、pytest、httpx",
+        ".env.example 包含 DATABASE_URL、UPLOAD_DIR、SECRET_KEY、SESSION_TTL_HOURS、MAX_UPLOAD_SIZE_MB、BASE_PATH、APP_VERSION、LOG_LEVEL 共 8 个变量",
+        ".gitignore 排除 .env、*.db、uploads/*（保留 .gitkeep）、__pycache__、.pytest_cache",
+        "run.py 使用 uvicorn.run() 启动 app.main:app，带 --reload",
+        "所有子包目录含 __init__.py"
+      ]
+    },
+    {
+      "id": "T002",
+      "title": "数据库引擎与会话管理",
+      "phase": 0,
+      "description": "实现 app/database.py：使用 SQLAlchemy 2.0 创建 engine（SQLite）、SessionLocal（sessionmaker）、declarative Base、get_db() 依赖注入生成器。engine 配置 connect_args={'check_same_thread': False} 以支持 FastAPI 异步上下文。",
+      "files_to_create": [
+        "app/database.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T001"],
+      "acceptance_criteria": [
+        "app/database.py 导出 engine、SessionLocal、Base、get_db",
+        "engine 使用 sqlite:///./contract_mgmt.db 连接 SQLite",
+        "get_db() 是一个生成器函数，yield db session 并在 finally 中关闭",
+        "可以用 from app.database import Base, engine 导入"
+      ]
+    },
+    {
+      "id": "T003",
+      "title": "SQLAlchemy ORM 模型定义（4 张表）",
+      "phase": 0,
+      "description": "实现 app/models/ 下的 4 个 ORM 模型：User（users 表）、Contract（contracts 表）、Attachment（attachments 表）、AuditLog（audit_logs 表）。每个模型定义 __tablename__、所有列（含类型、约束、默认值）、关系（relationship）、索引。User 与 Contract/Attachment/AuditLog 之间有外键关联。",
+      "files_to_create": [
+        "app/models/user.py",
+        "app/models/contract.py",
+        "app/models/attachment.py",
+        "app/models/audit_log.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T002"],
+      "acceptance_criteria": [
+        "User 模型包含字段：id, username(unique), password_hash, display_name, role, is_active, created_at, updated_at；role 有 CHECK 约束 'admin'/'user'",
+        "Contract 模型包含字段：id, title, contract_no(unique), parties, amount, status, sign_date, expiry_date, content, created_by(FK->users.id), created_at, updated_at；status 有 CHECK 约束 5 种状态",
+        "Attachment 模型包含字段：id, contract_id(FK->contracts.id, ON DELETE CASCADE), filename, original_name, file_size, mime_type, uploaded_by(FK->users.id), created_at",
+        "AuditLog 模型包含字段：id, user_id(FK->users.id), action, target_type, target_id, detail, ip_address, created_at",
+        "Contract.created_by 有 relationship 到 User",
+        "Base.metadata.create_all(bind=engine) 可以成功创建所有表"
+      ]
+    },
+    {
+      "id": "T004",
+      "title": "数据库迁移脚本：建表 DDL + 种子数据",
+      "phase": 0,
+      "description": "编写 migrations/001_initial_schema.sql（4 张表的完整 DDL，含约束和索引）和 migrations/002_seed_data.sql（插入演示账号 admin/admin123、user/user123 的 bcrypt 哈希密码，以及可选的示例合同数据）。实际应用中优先使用 SQLAlchemy create_all，迁移脚本作为文档和手动执行备用。",
+      "files_to_create": [
+        "migrations/001_initial_schema.sql",
+        "migrations/002_seed_data.sql"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T003"],
+      "acceptance_criteria": [
+        "001_initial_schema.sql 包含 CREATE TABLE IF NOT EXISTS 语句，覆盖 users、contracts、attachments、audit_logs 共 4 张表",
+        "所有约束（PRIMARY KEY、UNIQUE、NOT NULL、CHECK、REFERENCES、DEFAULT）与 ORM 模型一致",
+        "002_seed_data.sql 插入 admin（密码 admin123 的 bcrypt hash）和 user（密码 user123 的 bcrypt hash）两条用户记录",
+        "种子数据中 admin 的 role='admin'、is_active=1，user 的 role='user'、is_active=1"
+      ]
+    },
+    {
+      "id": "T005",
+      "title": "Pydantic 数据校验模型（全模块）",
+      "phase": 1,
+      "description": "实现 app/schemas/ 下的所有 Pydantic v2 模型：auth.py（LoginRequest、LoginResponse、CurrentUserResponse）、user.py（UserCreate、UserUpdate、UserResponse、PasswordChangeRequest）、contract.py（ContractCreate、ContractUpdate、ContractResponse、ContractDetailResponse、ContractListResponse、StatusChangeRequest）、attachment.py（AttachmentResponse）。使用 pydantic ConfigDict(from_attributes=True) 兼容 ORM 对象。",
+      "files_to_create": [
+        "app/schemas/auth.py",
+        "app/schemas/user.py",
+        "app/schemas/contract.py",
+        "app/schemas/attachment.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T001"],
+      "acceptance_criteria": [
+        "LoginRequest 包含 username(str, min_length=3, max_length=50) 和 password(str, min_length=6)",
+        "UserCreate 包含 username、password、display_name、role（Literal['admin','user']），含字段校验",
+        "UserUpdate 包含 display_name、role 可选字段",
+        "PasswordChangeRequest 包含 current_password 和 new_password",
+        "ContractCreate 包含 title、contract_no、parties(list[str], min_length=2)、amount(ge=0)、sign_date、expiry_date、content 可选",
+        "ContractUpdate 所有业务字段可选",
+        "ContractDetailResponse 包含 attachments 列表和 allowed_transitions 列表",
+        "StatusChangeRequest 包含 status(Literal['draft','pending_review','active','expired','terminated']) 和 comment 可选",
+        "所有 Response 模型使用 model_config = ConfigDict(from_attributes=True)"
+      ]
+    },
+    {
+      "id": "T006",
+      "title": "认证服务：密码哈希与会话管理",
+      "phase": 1,
+      "description": "实现 app/services/auth.py：使用 passlib[bcrypt] 实现 verify_password() 和 hash_password()；实现基于内存字典的 SessionStore 类（create_session、get_session、delete_session、cleanup_expired），session_id 使用 uuid4 生成，存储 user_id 和过期时间。同时实现 app/config.py 使用 pydantic-settings 加载所有环境变量。",
+      "files_to_create": [
+        "app/config.py",
+        "app/services/auth.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T001"],
+      "acceptance_criteria": [
+        "app/config.py 使用 pydantic-settings BaseSettings 加载 DATABASE_URL、UPLOAD_DIR、SECRET_KEY、SESSION_TTL_HOURS、MAX_UPLOAD_SIZE_MB、BASE_PATH、APP_VERSION、LOG_LEVEL",
+        "hash_password(plain) 返回 bcrypt hash 字符串",
+        "verify_password(plain, hashed) 返回 bool",
+        "SessionStore 支持 create_session(user_id) -> session_id(uuid4 str)",
+        "SessionStore 支持 get_session(session_id) -> user_id|None（过期返回 None）",
+        "SessionStore 支持 delete_session(session_id)",
+        "全局 session_store 实例可在其他模块中导入使用"
+      ]
+    },
+    {
+      "id": "T007",
+      "title": "认证依赖项与 Cache-Control 中间件",
+      "phase": 1,
+      "description": "实现 app/dependencies.py：get_current_user() 从 Cookie 中读取 session_id，查找 session_store，查询数据库获取 User 对象并注入 request.state；require_role() 工厂函数返回角色校验依赖。实现 app/middleware/cache_control.py：ASGI 中间件对 text/html Content-Type 响应添加 Cache-Control: no-cache 头。",
+      "files_to_create": [
+        "app/dependencies.py",
+        "app/middleware/cache_control.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T006", "T003"],
+      "acceptance_criteria": [
+        "get_current_user() 是 FastAPI Depends，从 request.cookies 获取 session_id → SessionStore → DB 查询 User → 返回 User ORM 对象",
+        "session 不存在或过期时 raise HTTPException(401)",
+        "用户 is_active=False 时 raise HTTPException(403, detail='账号已被禁用')",
+        "require_role('admin') 返回依赖函数，非 admin 用户 raise HTTPException(403)",
+        "CacheControlMiddleware 对 Content-Type 包含 'text/html' 的响应设置 headers['Cache-Control'] = 'no-cache'"
+      ]
+    },
+    {
+      "id": "T008",
+      "title": "认证 API 路由（登录/登出/当前用户）",
+      "phase": 1,
+      "description": "实现 app/routers/auth.py：POST /api/auth/login（校验用户名密码→创建 session→Set-Cookie→返回用户信息→记录审计日志）、POST /api/auth/logout（清除 session→清除 Cookie）、GET /api/auth/me（返回当前登录用户信息）。依赖 get_current_user()。",
+      "files_to_create": [
+        "app/routers/auth.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T008", "T005", "T007"],
+      "acceptance_criteria": [
+        "POST /api/auth/login 接收 LoginRequest JSON，校验用户名+密码，成功后 Set-Cookie: session_id=...; HttpOnly; Path=/projects/contract-mgmt/",
+        "密码错误返回 401 {detail: '用户名或密码错误'}",
+        "禁用用户登录返回 403 {detail: '账号已被禁用'}",
+        "POST /api/auth/logout 清除 session，Set-Cookie: session_id=; Max-Age=0",
+        "GET /api/auth/me 返回当前用户信息（id, username, display_name, role, is_active）",
+        "认证路由 prefix 为 /projects/contract-mgmt/api/auth，使用 APIRouter"
+      ]
+    },
+    {
+      "id": "T009",
+      "title": "用户管理服务层",
+      "phase": 2,
+      "description": "实现 app/services/user.py：get_users(db)（返回全部用户列表）、create_user(db, data, current_user)（含重复用户名检查、密码哈希、审计日志）、get_user_by_id(db, user_id)、update_user(db, user_id, data, current_user)、toggle_user_status(db, user_id, is_active, current_user)、change_password(db, user, current_password, new_password)。",
+      "files_to_create": [
+        "app/services/user.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T003", "T005", "T006"],
+      "acceptance_criteria": [
+        "create_user 检查 username 唯一性，重复则 raise HTTPException(409)",
+        "create_user 自动对 password 做 bcrypt hash 后存储 password_hash",
+        "create_user 写入 audit_log（action='user_create'）",
+        "update_user 支持更新 display_name 和 role",
+        "toggle_user_status 切换 is_active 字段（0↔1），禁止禁用自己",
+        "change_password 先校验 current_password，正确则更新为新密码的 bcrypt hash",
+        "change_password 写入 audit_log（action='password_change'）",
+        "所有操作通过 db: Session 参数接收数据库会话"
+      ]
+    },
+    {
+      "id": "T010",
+      "title": "用户管理 API 路由",
+      "phase": 2,
+      "description": "实现 app/routers/users.py：GET /api/users/（用户列表，admin）、POST /api/users/（创建用户，admin）、GET /api/users/{user_id}（获取用户，admin）、PUT /api/users/{user_id}（编辑用户，admin）、PUT /api/users/{user_id}/status（切换启用/禁用，admin）、PUT /api/users/me/password（修改自己密码，所有用户）。所有路由使用 require_role 依赖。",
+      "files_to_create": [
+        "app/routers/users.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T009", "T005", "T007"],
+      "acceptance_criteria": [
+        "所有路由 prefix 为 /projects/contract-mgmt/api/users",
+        "GET / 需要 admin 角色，返回 {users: [...]}",
+        "POST / 需要 admin 角色，接收 UserCreate，返回 201 + UserResponse",
+        "PUT /{user_id} 需要 admin 角色，接收 UserUpdate",
+        "PUT /{user_id}/status 需要 admin 角色，切换 is_active",
+        "PUT /me/password 需要登录，接收 PasswordChangeRequest",
+        "所有需要 admin 的路由对 user 角色返回 403",
+        "所有路由使用 Depends(get_db) 获取数据库会话"
+      ]
+    },
+    {
+      "id": "T011",
+      "title": "合同管理服务层（CRUD + 状态流转）",
+      "phase": 3,
+      "description": "实现 app/services/contract.py：list_contracts(db, search, status, page, page_size)（模糊搜索 title/contract_no、按状态筛选、分页，返回 {contracts, total, page, page_size}）、create_contract(db, data, current_user)、get_contract_detail(db, contract_id)（含附件列表和 allowed_transitions）、update_contract(db, contract_id, data, current_user)（仅 draft/pending_review 可编辑）、delete_contract(db, contract_id, current_user)（admin 或 draft 创建者）、change_status(db, contract_id, target_status, comment, current_user)（校验状态流转合法性、计算 allowed_transitions）。",
+      "files_to_create": [
+        "app/services/contract.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T003", "T005", "T006"],
+      "acceptance_criteria": [
+        "list_contracts 支持 search 参数模糊匹配 title 或 contract_no（使用 LIKE %keyword%）",
+        "list_contracts 支持 status 参数精确筛选",
+        "list_contracts 支持 page/page_size 分页（默认 page=1, page_size=20），返回 total 总数",
+        "create_contract 自动设置 status='draft'、created_by=current_user.id",
+        "create_contract 检查 contract_no 唯一性，重复 raise HTTPException(409)",
+        "create_contract 写入 audit_log（action='contract_create'）",
+        "get_contract_detail 返回合同 + 附件列表 + allowed_transitions（根据当前状态计算）",
+        "update_contract 仅允许 draft/pending_review 状态编辑核心字段，否则 raise HTTPException(400)",
+        "delete_contract 仅 admin 或 draft 状态创建者可删，否则 raise HTTPException(403)",
+        "change_status 校验目标状态在 allowed_transitions 中，否则 raise HTTPException(400)",
+        "change_status 写入 audit_log（action='contract_status_change'，detail 含 old_status、new_status、comment）",
+        "状态流转映射：draft→[pending_review, terminated]; pending_review→[active, draft]; active→[expired, terminated]; expired→[]; terminated→[]"
+      ]
+    },
+    {
+      "id": "T012",
+      "title": "合同管理 API 路由",
+      "phase": 3,
+      "description": "实现 app/routers/contracts.py：GET /api/contracts/（列表，支持 query params: search, status, page, page_size）、POST /api/contracts/（创建）、GET /api/contracts/{contract_id}（详情）、PUT /api/contracts/{contract_id}（编辑）、DELETE /api/contracts/{contract_id}（删除）、POST /api/contracts/{contract_id}/status（状态变更）。",
+      "files_to_create": [
+        "app/routers/contracts.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T011", "T005", "T007"],
+      "acceptance_criteria": [
+        "所有路由 prefix 为 /projects/contract-mgmt/api/contracts",
+        "GET / 支持 search(string,optional)、status(string,optional)、page(int,default=1)、page_size(int,default=20) 查询参数",
+        "POST / 接收 ContractCreate JSON，返回 201 + ContractResponse",
+        "GET /{contract_id} 返回 ContractDetailResponse（含 attachments 和 allowed_transitions）",
+        "PUT /{contract_id} 接收 ContractUpdate JSON",
+        "DELETE /{contract_id} 返回 {message: '合同已删除'}",
+        "POST /{contract_id}/status 接收 StatusChangeRequest，返回状态变更结果",
+        "所有路由需要登录（Depends(get_current_user)）",
+        "使用 Depends(get_db) 获取数据库会话"
+      ]
+    },
+    {
+      "id": "T013",
+      "title": "附件管理服务层（上传/下载/删除/校验）",
+      "phase": 4,
+      "description": "实现 app/services/attachment.py：upload_attachment(db, contract_id, file: UploadFile, current_user)（校验 MIME 类型→校验扩展名→校验文件大小≤10MB→检查合同存在→UUID 重命名→写入 uploads/→保存元数据→审计日志）、get_attachment(db, attachment_id)（查询附件记录）、delete_attachment(db, attachment_id, current_user)（删除文件+记录+审计日志）、download_attachment(db, attachment_id)（返回文件路径和原始文件名）。",
+      "files_to_create": [
+        "app/services/attachment.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T003", "T005", "T006"],
+      "acceptance_criteria": [
+        "upload_attachment 校验 MIME 类型为 application/pdf / application/msword / application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "upload_attachment 校验文件扩展名为 .pdf / .doc / .docx",
+        "upload_attachment 校验文件大小 ≤ 10,485,760 bytes (10MB)",
+        "MIME 类型或扩展名不合法 raise HTTPException(400, detail='不支持的文件类型，仅允许 PDF、DOC、DOCX')",
+        "文件超过 10MB raise HTTPException(400, detail='文件大小超过 10MB 限制')",
+        "存储文件名使用 uuid4().hex + 保留原始扩展名",
+        "upload_attachment 写入 audit_log（action='attachment_upload'）",
+        "delete_attachment 同时删除磁盘文件（os.remove）和数据库记录",
+        "delete_attachment 写入 audit_log（action='attachment_delete'）",
+        "download_attachment 返回 (file_path, original_name) 元组供路由使用 FileResponse",
+        "uploads/ 目录不存在时自动创建"
+      ]
+    },
+    {
+      "id": "T014",
+      "title": "附件管理 API 路由",
+      "phase": 4,
+      "description": "实现 app/routers/attachments.py：POST /api/contracts/{contract_id}/attachments（上传，multipart/form-data）、GET /api/attachments/{attachment_id}/download（下载，FileResponse）、DELETE /api/attachments/{attachment_id}（删除）。",
+      "files_to_create": [
+        "app/routers/attachments.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T013", "T005", "T007"],
+      "acceptance_criteria": [
+        "路由 prefix 为 /projects/contract-mgmt/api",
+        "POST /contracts/{contract_id}/attachments 接收 UploadFile，返回 201 + AttachmentResponse",
+        "GET /attachments/{attachment_id}/download 返回 FileResponse 文件流，Content-Disposition: attachment; filename=\"原始名\"",
+        "DELETE /attachments/{attachment_id} 返回 {message: '附件已删除'}",
+        "所有路由需要登录",
+        "使用 Depends(get_db) 获取数据库会话"
+      ]
+    },
+    {
+      "id": "T015",
+      "title": "审计日志服务与全模块集成",
+      "phase": 5,
+      "description": "实现 app/services/audit.py：write_audit_log(db, user_id, action, target_type, target_id, detail, ip_address) 写入 audit_logs 表。在 auth、user、contract、attachment 服务中已预留的审计日志调用点确保实际写入。日志 action 覆盖全部 tracked_actions（12 种）。",
+      "files_to_create": [
+        "app/services/audit.py"
+      ],
+      "files_to_modify": [
+        "app/services/auth.py",
+        "app/services/user.py",
+        "app/services/contract.py",
+        "app/services/attachment.py"
+      ],
+      "dependencies": ["T003", "T006", "T009", "T011", "T013"],
+      "acceptance_criteria": [
+        "write_audit_log() 接收 db session、user_id、action、target_type(optional)、target_id(optional)、detail(optional, JSON string)、ip_address(optional)",
+        "所有登录操作记录 audit_log（action='login'）",
+        "所有登出操作记录 audit_log（action='logout'）",
+        "所有用户管理操作记录 audit_log（user_create、user_update、user_toggle_status、password_change）",
+        "所有合同操作记录 audit_log（contract_create、contract_update、contract_delete、contract_status_change）",
+        "所有附件操作记录 audit_log（attachment_upload、attachment_delete）",
+        "登录/登出时从 request 获取 client IP（X-Forwarded-For 或 request.client.host）",
+        "detail 字段存储 JSON 字符串格式的操作详情"
+      ]
+    },
+    {
+      "id": "T016",
+      "title": "前端基础模板、全局 CSS 样式与静态资源",
+      "phase": 6,
+      "description": "实现 app/templates/base.html（HTML5 骨架、导航栏、flash 消息区域、Content 占位 block、静态资源引用带 ?v=0.0.1 版本令牌）、app/static/css/style.css（全局样式：布局、表单、表格、按钮、状态标签颜色、分页、flash 消息、响应式基础）、app/static/js/app.js（通用交互：删除确认弹窗、文件上传预览、状态操作确认、表单提交前校验）。",
+      "files_to_create": [
+        "app/templates/base.html",
+        "app/static/css/style.css",
+        "app/static/js/app.js"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T001"],
+      "acceptance_criteria": [
+        "base.html 使用 Jinja2 模板继承（{% block content %}{% endblock %}）",
+        "base.html 导航栏根据登录状态显示不同内容（未登录：登录链接；已登录：用户名、角色、登出按钮；admin 额外显示用户管理链接）",
+        "base.html 静态资源 URL 包含 ?v=0.0.1 版本令牌且路径前缀为 /projects/contract-mgmt/static/",
+        "base.html 包含 flash 消息显示区域（成功/错误/警告）",
+        "style.css 定义 5 种合同状态的颜色标签（draft=灰、pending_review=黄、active=绿、expired=蓝、terminated=红）",
+        "style.css 表格样式、分页样式、按钮样式、表单布局完整",
+        "app.js 包含通用 confirmDelete()、confirmStatusChange() 函数",
+        "所有页面不依赖任何外部 CDN 资源"
+      ]
+    },
+    {
+      "id": "T017",
+      "title": "登录页面模板",
+      "phase": 6,
+      "description": "实现 app/templates/login.html：继承 base.html，用户名+密码表单，表单提交到 /projects/contract-mgmt/api/auth/login（通过 JS fetch），登录成功跳转到 /projects/contract-mgmt/contracts，登录失败显示错误提示。",
+      "files_to_create": [
+        "app/templates/login.html"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T016"],
+      "acceptance_criteria": [
+        "login.html 继承 base.html",
+        "包含用户名输入框（placeholder='用户名'）和密码输入框（type='password', placeholder='密码'）",
+        "登录按钮提交后通过 JS fetch POST /api/auth/login",
+        "登录成功：跳转到 /projects/contract-mgmt/contracts",
+        "登录失败：页面显示错误消息（用户名或密码错误 / 账号已被禁用）",
+        "输入为空时前端阻止提交并提示"
+      ]
+    },
+    {
+      "id": "T018",
+      "title": "用户管理页面（列表 + 创建/编辑表单）",
+      "phase": 6,
+      "description": "实现 app/templates/users/list.html（用户表格：用户名、显示名、角色、状态标签、创建时间、操作按钮[编辑/启用禁用切换]；顶部创建用户按钮）和 app/templates/users/form.html（创建/编辑用户表单，通过 user 变量区分模式，含用户名、显示名、密码（创建必填、编辑可选）、角色下拉）。",
+      "files_to_create": [
+        "app/templates/users/list.html",
+        "app/templates/users/form.html"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T016"],
+      "acceptance_criteria": [
+        "list.html 显示所有用户表格，列：用户名、显示名、角色、状态（启用=绿色/禁用=红色）、创建时间、操作",
+        "list.html 操作列：编辑按钮（跳转 /users/{id}/edit）、启用/禁用切换按钮（JS fetch PUT /api/users/{id}/status）",
+        "list.html 顶部有「创建用户」按钮（跳转 /users/new）",
+        "form.html 在创建模式（无 user.id）时显示用户名、显示名、密码、角色字段",
+        "form.html 在编辑模式（有 user.id）时显示用户名（只读）、显示名、角色字段，不显示密码",
+        "form.html 提交通过 JS fetch POST /api/users/ (创建) 或 PUT /api/users/{id} (编辑)",
+        "创建/编辑成功后跳转到 /users，失败显示错误提示",
+        "non-admin 用户访问 /users 应显示无权限提示"
+      ]
+    },
+    {
+      "id": "T019",
+      "title": "合同列表页面",
+      "phase": 6,
+      "description": "实现 app/templates/contracts/list.html：搜索框（标题/合同号）、状态筛选下拉（全部/draft/pending_review/active/expired/terminated）、合同表格（标题、编号、签约方、金额、状态标签、签订日期、到期日期、操作）、分页控件、新建合同按钮。搜索和筛选通过 GET query params 提交。",
+      "files_to_create": [
+        "app/templates/contracts/list.html"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T016"],
+      "acceptance_criteria": [
+        "list.html 顶部搜索区域：文本输入框 + 状态下拉选择 + 搜索按钮",
+        "搜索通过 GET /contracts?search=xxx&status=xxx 表单提交",
+        "合同表格列：标题、合同编号、签约方（逗号分隔）、金额（格式化）、状态（彩色标签）、签订日期、到期日期、操作",
+        "每条合同操作：查看（链接到 /contracts/{id}）、编辑（链接到 /contracts/{id}/edit，draft/pending_review 状态显示）",
+        "分页控件：首页、上一页、页码、下一页、末页",
+        "「新建合同」按钮链接到 /contracts/new"
+      ]
+    },
+    {
+      "id": "T020",
+      "title": "合同创建/编辑表单页面",
+      "phase": 6,
+      "description": "实现 app/templates/contracts/form.html：标题输入框、合同编号输入框、签约方动态列表（可添加/删除行）、金额输入框、签订日期 date input、到期日期 date input、合同内容 textarea、提交按钮。创建模式无初始数据；编辑模式预填数据（edit 状态可完全编辑，pending_review 仅内容可编辑）。",
+      "files_to_create": [
+        "app/templates/contracts/form.html"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T016"],
+      "acceptance_criteria": [
+        "form.html 包含所有合同字段的表单输入元素",
+        "签约方使用动态列表：默认两行输入框，可点击「+」添加行、「-」删除行",
+        "表单提交通过 JS fetch POST /api/contracts/ (创建) 或 PUT /api/contracts/{id} (编辑)",
+        "创建成功后跳转到 /contracts/{id}（新建合同的详情页）",
+        "编辑成功后刷新当前页",
+        "前端校验：标题必填、合同编号必填、签约方至少 2 方、金额 >= 0",
+        "编辑模式：非 draft 且非 pending_review 状态时，关键字段只读显示"
+      ]
+    },
+    {
+      "id": "T021",
+      "title": "合同详情页面（信息展示 + 附件管理 + 状态操作）",
+      "phase": 6,
+      "description": "实现 app/templates/contracts/detail.html：合同完整信息展示（字段+值表格或卡片布局）、附件区域（附件列表表格：文件名、大小、上传时间、下载/删除按钮；上传按钮）、状态操作按钮组（根据 allowed_transitions 动态显示：提交审核/审核通过/退回/终止等）、编辑按钮、删除按钮。",
+      "files_to_create": [
+        "app/templates/contracts/detail.html"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T016"],
+      "acceptance_criteria": [
+        "detail.html 展示合同所有字段（标题、编号、签约方、金额、状态标签、签订/到期日期、内容、创建人、创建时间、更新时间）",
+        "附件区域表格列：文件名、大小（KB/MB 格式化）、上传时间、下载按钮、删除按钮",
+        "附件上传：文件选择 input + 上传按钮，JS fetch POST /api/contracts/{id}/attachments，multipart/form-data",
+        "附件上传前端校验文件类型（.pdf/.doc/.docx）和大小（≤10MB）",
+        "附件删除前 JS 弹出确认框",
+        "状态操作按钮根据 allowed_transitions 动态显示：draft 显示「提交审核」「终止」；pending_review 显示「审核通过」「退回」；active 显示「终止」",
+        "状态操作按钮点击前 JS 弹出确认框",
+        "编辑按钮在 draft/pending_review 状态显示（链接到 /contracts/{id}/edit）",
+        "删除按钮在 admin 角色或创建者+draft 状态时显示"
+      ]
+    },
+    {
+      "id": "T022",
+      "title": "Jinja2 页面路由（所有前端页面）",
+      "phase": 7,
+      "description": "实现 app/routers/pages.py：所有页面路由的 GET 处理器。GET /login（登录页）、GET /users（用户列表，admin）、GET /users/new（创建用户表单，admin）、GET /users/{user_id}/edit（编辑用户表单，admin）、GET /contracts（合同列表）、GET /contracts/new（创建合同表单）、GET /contracts/{contract_id}/edit（编辑合同表单）、GET /contracts/{contract_id}（合同详情）。每个路由通过 Jinja2Templates 渲染对应模板，注入必要数据。根路径 / 重定向到 /contracts。",
+      "files_to_create": [
+        "app/routers/pages.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T016", "T017", "T018", "T019", "T020", "T021"],
+      "acceptance_criteria": [
+        "使用 FastAPI Jinja2Templates，模板目录为 app/templates",
+        "prefix 为 /projects/contract-mgmt",
+        "GET /projects/contract-mgmt/ 重定向到 /projects/contract-mgmt/contracts",
+        "GET /login 渲染 login.html（未登录可访问）",
+        "GET /users、/users/new、/users/{user_id}/edit 需要 admin 角色（Depends(require_role('admin'))）",
+        "GET /contracts 需要登录，注入 search、status、page 等 query params 到模板",
+        "GET /contracts/{contract_id} 需要登录，注入合同详情数据 + 附件列表 + allowed_transitions",
+        "GET /contracts/{contract_id}/edit 需要登录，注入合同数据",
+        "所有受保护页面未登录时重定向到 /login?next=<原路径>",
+        "页面路由不返回 JSON，返回 HTML（使用 template.TemplateResponse）"
+      ]
+    },
+    {
+      "id": "T023",
+      "title": "FastAPI 主应用组装（main.py）",
+      "phase": 7,
+      "description": "实现 app/main.py：创建 FastAPI 应用实例（title='合同管理系统', version='0.0.1'），挂载 Cache-Control 中间件，注册所有路由器（auth、users、contracts、attachments、pages），挂载静态文件目录（/projects/contract-mgmt/static -> app/static），添加 startup 事件（创建 uploads 目录、执行数据库迁移脚本或 create_all、执行种子数据脚本如果用户表为空），添加 healthz 端点。",
+      "files_to_create": [
+        "app/main.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T002", "T008", "T010", "T012", "T014", "T022"],
+      "acceptance_criteria": [
+        "FastAPI app 实例创建，title='合同管理系统', version='0.0.1'",
+        "add_middleware(CacheControlMiddleware) 添加缓存控制中间件",
+        "app.include_router() 注册 auth_router、users_router、contracts_router、attachments_router、pages_router",
+        "app.mount('/projects/contract-mgmt/static', StaticFiles(directory='app/static'), name='static')",
+        "startup 事件：自动创建 uploads/ 目录（os.makedirs(exist_ok=True)）",
+        "startup 事件：Base.metadata.create_all(bind=engine) 创建数据库表",
+        "startup 事件：检查 users 表是否为空，为空则执行种子数据（插入 admin/user 演示账号）",
+        "GET /projects/contract-mgmt/healthz 返回 {status: 'ok', version: '0.0.1'}",
+        "导入所有模型以确保 Base.metadata 包含所有表"
+      ]
+    },
+    {
+      "id": "T024",
+      "title": "测试基础设施（conftest.py + fixtures）",
+      "phase": 8,
+      "description": "实现 tests/conftest.py：定义 pytest fixtures — client（FastAPI TestClient，使用 SQLite 内存数据库，override get_db）、db_session（独立数据库会话）、admin_token（登录 admin 获取 session cookie）、user_token（登录 user 获取 session cookie）、test_contract（创建一个测试合同）。通过 app.dependency_overrides 替换数据库依赖为测试数据库。",
+      "files_to_create": [
+        "tests/conftest.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T023"],
+      "acceptance_criteria": [
+        "client fixture 创建 TestClient(app)，使用 sqlite:///./test.db 或 :memory:",
+        "client fixture 通过 dependency_overrides 替换 get_db 为测试数据库会话",
+        "client fixture setup 时执行 Base.metadata.create_all() 和种子数据",
+        "client fixture teardown 时执行 Base.metadata.drop_all()",
+        "admin_token fixture 通过 POST /api/auth/login 以 admin/admin123 登录，返回 session cookie dict",
+        "user_token fixture 通过 POST /api/auth/login 以 user/user123 登录，返回 session cookie dict",
+        "test_contract fixture 通过 admin_token 创建一个测试合同，返回 contract 对象",
+        "所有 fixture scope 为 function"
+      ]
+    },
+    {
+      "id": "T025",
+      "title": "认证模块测试（pytest）",
+      "phase": 8,
+      "description": "实现 tests/test_auth.py：测试正常登录（admin、user）、错误密码登录返回 401、禁用用户登录返回 403、不存在的用户登录返回 401、登录后 GET /me 返回用户信息、登出后 /me 返回 401、未登录访问受保护 API 返回 401。使用 client fixture 和 httpx cookies。",
+      "files_to_create": [
+        "tests/test_auth.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T024"],
+      "acceptance_criteria": [
+        "test_login_admin_success: POST /api/auth/login admin/admin123 → 200, 返回 user 对象含 username='admin', role='admin'",
+        "test_login_user_success: POST /api/auth/login user/user123 → 200",
+        "test_login_wrong_password: POST /api/auth/login admin/wrong → 401",
+        "test_login_nonexistent_user: POST /api/auth/login nobody/xxx → 401",
+        "test_me_authenticated: 带 session cookie 的 GET /api/auth/me → 200, 返回用户信息",
+        "test_me_unauthenticated: 无 cookie 的 GET /api/auth/me → 401",
+        "test_logout: POST /api/auth/logout → 200, 之后 GET /me → 401",
+        "test_login_disabled_user: 先禁用 user → POST login user/user123 → 403"
+      ]
+    },
+    {
+      "id": "T026",
+      "title": "用户管理模块测试（pytest）",
+      "phase": 8,
+      "description": "实现 tests/test_users.py：测试 admin 可查看用户列表、创建新用户、获取单个用户、编辑用户、启用/禁用用户；user 角色无法访问用户管理 API（403）；创建重复用户名返回 409；用户可修改自己密码；修改密码时旧密码错误返回 400。",
+      "files_to_create": [
+        "tests/test_users.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T024"],
+      "acceptance_criteria": [
+        "test_list_users_admin: GET /api/users/ with admin cookie → 200, users 列表长度 >= 2",
+        "test_create_user_admin: POST /api/users/ with admin cookie → 201, 返回新用户对象",
+        "test_create_user_duplicate_username: POST /api/users/ 重复用户名 → 409",
+        "test_get_user_admin: GET /api/users/{id} with admin cookie → 200",
+        "test_update_user_admin: PUT /api/users/{id} with admin cookie → 200",
+        "test_toggle_user_status: PUT /api/users/{id}/status {is_active: false} → 200, is_active=false",
+        "test_user_cannot_access_users_api: GET /api/users/ with user cookie → 403",
+        "test_user_cannot_create_user: POST /api/users/ with user cookie → 403",
+        "test_change_password_success: PUT /api/users/me/password with correct old password → 200",
+        "test_change_password_wrong_old: PUT /api/users/me/password with wrong old password → 400"
+      ]
+    },
+    {
+      "id": "T027",
+      "title": "合同管理模块测试（pytest）",
+      "phase": 8,
+      "description": "实现 tests/test_contracts.py：测试创建合同（自动设为 draft）、合同列表分页、按状态筛选、按关键词搜索、查看详情（含 allowed_transitions）、编辑 draft 合同、active 合同不可编辑（400）、完整状态流转链（draft→pending_review→active→expired 各步骤）、draft→terminated、pending_review→draft（退回）、非法状态流转（400）、合同编号重复（409）、admin 删除合同、普通用户删除非自己创建的合同（403）。",
+      "files_to_create": [
+        "tests/test_contracts.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T024"],
+      "acceptance_criteria": [
+        "test_create_contract: POST /api/contracts/ → 201, status='draft'",
+        "test_create_contract_duplicate_no: 同 contract_no 再次创建 → 409",
+        "test_list_contracts_pagination: GET /api/contracts/?page=1&page_size=5 → 200, contracts 数组 + total + page + page_size",
+        "test_filter_contracts_by_status: GET /api/contracts/?status=draft → 200, 所有结果 status='draft'",
+        "test_search_contracts: GET /api/contracts/?search=采购 → 200, 匹配 title 或 contract_no 含 '采购'",
+        "test_get_contract_detail: GET /api/contracts/{id} → 200, 含 attachments 和 allowed_transitions",
+        "test_update_draft_contract: PUT /api/contracts/{id} draft 合同 → 200",
+        "test_cannot_update_active_contract: PUT /api/contracts/{id} active 合同 → 400",
+        "test_status_flow_full: POST /api/contracts/{id}/status → draft→pending_review→active→expired 各步骤 200",
+        "test_status_draft_to_terminated: POST status {status:'terminated'} → 200",
+        "test_status_pending_review_to_draft: POST status {status:'draft'} → 200",
+        "test_invalid_transition: POST status {status:'expired'} from draft → 400",
+        "test_admin_delete_contract: DELETE /api/contracts/{id} with admin → 200",
+        "test_user_cannot_delete_others_contract: user delete admin 创建的合同 → 403"
+      ]
+    },
+    {
+      "id": "T028",
+      "title": "附件管理模块测试（pytest）",
+      "phase": 8,
+      "description": "实现 tests/test_attachments.py：测试上传 PDF/DOC/DOCX 附件成功、上传非允许类型文件（如 .txt）返回 400、上传超 10MB 文件返回 400、下载附件成功（文件名正确、Content-Disposition）、删除附件成功（文件不再可下载）、未登录无法下载附件。需要创建临时测试文件（pdf/doc/docx/txt/大文件）。",
+      "files_to_create": [
+        "tests/test_attachments.py"
+      ],
+      "files_to_modify": [],
+      "dependencies": ["T024", "T027"],
+      "acceptance_criteria": [
+        "test_upload_pdf: POST /api/contracts/{id}/attachments with .pdf file → 201",
+        "test_upload_doc: POST with .doc file → 201（注意 MIME 类型为 application/msword）",
+        "test_upload_docx: POST with .docx file → 201（MIME 类型为 application/vnd.openxmlformats-officedocument.wordprocessingml.document）",
+        "test_upload_invalid_type: POST with .txt file → 400, detail 含 '不支持的文件类型'",
+        "test_upload_oversized: POST with >10MB file → 400, detail 含 '超过 10MB'",
+        "test_download_attachment: GET /api/attachments/{id}/download → 200, Content-Disposition 含原始文件名",
+        "test_delete_attachment: DELETE /api/attachments/{id} → 200, 之后 GET download → 404",
+        "test_download_unauthenticated: 无 cookie GET download → 401",
+        "所有测试使用 client fixture 和 admin_token"
+      ]
+    },
+    {
+      "id": "T029",
+      "title": "更新 docs/architecture.md",
+      "phase": 9,
+      "description": "根据 technical_plan 和实际实现，填充 docs/architecture.md 的完整内容：系统目标与边界、技术栈与选择理由（Python FastAPI + SQLite + Jinja2 + Session 认证 + bcrypt + 本地文件存储）、模块职责与依赖（app/ 下各子包的职责描述）、数据流与状态流（合同状态机图）、测试策略（pytest + SQLite 内存数据库）、部署拓扑（单进程 uvicorn）、安全边界（Session HttpOnly Cookie、bcrypt 密码哈希、附件下载权限控制、SQL 参数化防注入）、已知技术债（暂无）、关联 ADR 与最近变更。",
+      "files_to_create": [],
+      "files_to_modify": [
+        "docs/architecture.md"
+      ],
+      "dependencies": ["T023"],
+      "acceptance_criteria": [
+        "系统目标与边界：描述合同管理系统的核心功能边界，明确不做的事项",
+        "技术栈与选择理由：逐项列出技术选型及理由（引用 key_technical_decisions）",
+        "模块职责与依赖：app/models/、app/schemas/、app/services/、app/routers/、app/templates/、app/middleware/ 各包职责",
+        "数据流：用户请求 → 路由 → 服务 → ORM → SQLite → 响应 的流程图",
+        "合同状态流：draft→pending_review→active→expired; draft/active→terminated; pending_review→draft 状态机图（Mermaid 或 ASCII）",
+        "测试策略：pytest + TestClient + SQLite :memory: 的测试架构描述",
+        "部署拓扑：uvicorn 单进程 + Aliyun systemd + Nginx 反向代理",
+        "安全边界：认证(Cookie HttpOnly)、密码(bcrypt)、附件(权限控制)、SQL(参数化) 四项"
+      ]
+    },
+    {
+      "id": "T030",
+      "title": "更新 docs/runbook.md",
+      "phase": 9,
+      "description": "填充 docs/runbook.md 的完整内容：本地安装与启动（conda 环境激活、pip install -r requirements.txt、复制 .env.example 为 .env、python run.py）、测试命令（pytest tests/ -v --tb=short）、健康检查端点（curl /projects/contract-mgmt/healthz）、环境变量说明表、Base Path 说明（所有路由和静态资源位于 /projects/contract-mgmt/ 下）、缓存策略（Cache-Control: no-cache 中间件 + 静态资源 ?v=0.0.1 版本令牌）、日志查看、常见故障与恢复。",
+      "files_to_create": [],
+      "files_to_modify": [
+        "docs/runbook.md"
+      ],
+      "dependencies": ["T023"],
+      "acceptance_criteria": [
+        "本地安装与启动：包含 conda 环境激活步骤、依赖安装、环境变量配置、启动命令",
+        "测试：包含 pytest 运行命令和预期输出说明",
+        "健康检查：curl 命令示例和预期返回",
+        "环境变量：表格列出所有 8 个变量、默认值、说明",
+        "Base Path：说明 /projects/contract-mgmt/ 前缀对路由和静态资源的影响",
+        "缓存策略：说明 Cache-Control 中间件和版本令牌机制，引用 runbook.md 原有要求",
+        "日志查看：说明 uvicorn 日志输出位置和级别配置",
+        "常见故障：端口占用、数据库文件权限、upload 目录权限 3 个常见问题及解决"
+      ]
+    }
+  ]
+}
