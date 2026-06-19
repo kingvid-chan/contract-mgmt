@@ -1,0 +1,6 @@
+{
+  "iteration": "0.0.2",
+  "tag": "0.0.2",
+  "commit": "e4f5a99761ab285f2cbcf2885e4f5a43e8d9d3a7",
+  "message": "Release 0.0.2: fix parties type mismatch in contract list"
+}

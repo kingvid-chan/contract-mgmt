@@ -1,0 +1,55 @@
+{
+  "schema_version": 3,
+  "release_version": "0.0.2",
+  "public_url": "http://120.24.117.67/projects/contract-mgmt/",
+  "final_url": "http://120.24.117.67/projects/contract-mgmt/contracts/4",
+  "base_path_ok": true,
+  "verified_at": "2026-06-19T18:17:30+00:00",
+  "browser": "Browserbase",
+  "visual_review": {
+    "verdict": "pass",
+    "issues": [],
+    "provider": "kimi",
+    "model": "moonshot-v1-vision-preview"
+  },
+  "document_response_headers": {
+    "cache-control": "no-cache, no-store, must-revalidate, no-cache",
+    "content-type": "text/html; charset=utf-8",
+    "server": "nginx/1.24.0 (Ubuntu)"
+  },
+  "static_assets": [
+    {"url": "http://120.24.117.67/projects/contract-mgmt/static/css/style.css?v=0.0.2", "http_status": 200},
+    {"url": "http://120.24.117.67/projects/contract-mgmt/static/js/app.js?v=0.0.2", "http_status": 200}
+  ],
+  "stylesheets": [
+    {"resolved_url": "http://120.24.117.67/projects/contract-mgmt/static/css/style.css?v=0.0.2", "http_status": 200}
+  ],
+  "asset_probes": [
+    {"url": "http://120.24.117.67/projects/contract-mgmt/static/css/style.css?v=0.0.2", "http_status": 200},
+    {"url": "http://120.24.117.67/projects/contract-mgmt/static/js/app.js?v=0.0.2", "http_status": 200}
+  ],
+  "pages": [
+    {"url": "http://120.24.117.67/projects/contract-mgmt/login", "ok": true, "desc": "登录页"},
+    {"url": "http://120.24.117.67/projects/contract-mgmt/contracts", "ok": true, "desc": "合同列表"},
+    {"url": "http://120.24.117.67/projects/contract-mgmt/contracts/4", "ok": true, "desc": "合同详情（已终止）"},
+    {"url": "http://120.24.117.67/projects/contract-mgmt/users", "ok": true, "desc": "用户管理"}
+  ],
+  "workflow_checks": [
+    {"ok": true, "desc": "登录 (admin/admin123) → 合同列表"},
+    {"ok": true, "desc": "创建合同 HT-TEST-BROWSER-001 → 草稿状态"},
+    {"ok": true, "desc": "上传 PDF 附件 → 201 created"},
+    {"ok": true, "desc": "上传 .txt 附件被拒绝 → 400 bad request"},
+    {"ok": true, "desc": "状态流转: 草稿→待审核→生效中→已终止"},
+    {"ok": true, "desc": "操作审计: 4条操作记录"},
+    {"ok": true, "desc": "未登录返回JSON错误提示"}
+  ],
+  "failed_requests": [],
+  "http_errors": [],
+  "console_errors": [],
+  "screenshots": [
+    "evidence/verification/browser_screenshot_d693f879e8d0408997e6f49de59d8330.png",
+    "evidence/verification/browser_screenshot_92550ac3d97a4d7ea8aec07bca5a45bd.png",
+    "evidence/verification/browser_screenshot_3c4cf7eb284849318248c0cff9a137f2.png",
+    "evidence/verification/browser_screenshot_a9e624c1ee7947f79cb65236363a3042.png"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "stdout": "{"status":"ok","version":"0.0.2"}",
+  "public_url": "http://120.24.117.67/projects/contract-mgmt/",
+  "health_url": "http://120.24.117.67/projects/contract-mgmt/healthz",
+  "ok": true,
+  "note": "HTTP→HTTPS redirect followed, health endpoint returns version 0.0.2"
+}

@@ -1,0 +1,12 @@
+{
+  "release_commit": "e4f5a99761ab285f2cbcf2885e4f5a43e8d9d3a7",
+  "checkout_commit": "e4f5a99761ab285f2cbcf2885e4f5a43e8d9d3a7",
+  "server": "aliyun-cowork",
+  "port": 19050,
+  "service_name": "codingagent-contract-mgmt",
+  "service_status": "active",
+  "public_url": "https://120.24.117.67/projects/contract-mgmt/",
+  "health_url": "https://120.24.117.67/projects/contract-mgmt/healthz",
+  "health_response": {"status": "ok", "version": "0.0.2"},
+  "nginx_https_redirect": true
+}
