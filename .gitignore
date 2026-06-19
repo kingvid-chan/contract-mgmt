@@ -13,3 +13,4 @@ process-log/
 uploads/*
 !uploads/.gitkeep
 .pytest_cache/
+.venv/
