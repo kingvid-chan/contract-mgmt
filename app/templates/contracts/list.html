@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}合同管理 - 合同管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">合同管理</h2>
+        <a href="/projects/contract-mgmt/contracts/new" class="btn btn-primary">+ 新建合同</a>
+    </div>
+
+    <form method="get" action="/projects/contract-mgmt/contracts" class="search-bar">
+        <input type="text" name="search" class="form-input" placeholder="搜索标题或合同编号..." value="{{ search or '' }}">
+        <select name="status" class="form-select">
+            <option value="">全部状态</option>
+            <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>草稿</option>
+            <option value="pending_review" {% if status_filter == 'pending_review' %}selected{% endif %}>待审核</option>
+            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>生效中</option>
+            <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>已到期</option>
+            <option value="terminated" {% if status_filter == 'terminated' %}selected{% endif %}>已终止</option>
+        </select>
+        <button type="submit" class="btn btn-primary">搜索</button>
+        {% if search or status_filter %}
+        <a href="/projects/contract-mgmt/contracts" class="btn btn-secondary">清除</a>
+        {% endif %}
+    </form>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>合同编号</th>
+                    <th>标题</th>
+                    <th>签约方</th>
+                    <th>金额</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if contracts %}
+                {% for c in contracts %}
+                <tr>
+                    <td><strong>{{ c.contract_no }}</strong></td>
+                    <td>{{ c.title }}</td>
+                    <td>
+                        {% for p in c.parties %}
+                        {{ p.name }}{% if not loop.last %}、{% endif %}
+                        {% endfor %}
+                    </td>
+                    <td class="amount">¥ {{ '{:,.2f}'.format(c.amount) }}</td>
+                    <td>
+                        <span class="status-badge status-{{ c.status }}">
+                            {% if c.status == 'draft' %}草稿
+                            {% elif c.status == 'pending_review' %}待审核
+                            {% elif c.status == 'active' %}生效中
+                            {% elif c.status == 'expired' %}已到期
+                            {% elif c.status == 'terminated' %}已终止
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>{{ c.created_at[:10] if c.created_at else '-' }}</td>
+                    <td class="actions">
+                        <a href="/projects/contract-mgmt/contracts/{{ c.id }}" class="btn btn-sm btn-primary">查看</a>
+                        {% if c.status in ('draft', 'pending_review') %}
+                        <a href="/projects/contract-mgmt/contracts/{{ c.id }}/edit" class="btn btn-sm btn-secondary">编辑</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <div class="empty-icon">📄</div>
+                            <p>暂无合同数据</p>
+                            <a href="/projects/contract-mgmt/contracts/new" class="btn btn-primary mt-4">创建第一个合同</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if total and total > page_size %}
+    <div class="pagination">
+        {% set total_pages = ((total + page_size - 1) // page_size) %}
+        {% if page > 1 %}
+        <a href="?search={{ search or '' }}&status={{ status_filter or '' }}&page={{ page - 1 }}&page_size={{ page_size }}">上一页</a>
+        {% else %}
+        <span class="disabled">上一页</span>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <span class="active">{{ p }}</span>
+            {% elif p <= 3 or p > total_pages - 3 or (p >= page - 1 and p <= page + 1) %}
+            <a href="?search={{ search or '' }}&status={{ status_filter or '' }}&page={{ p }}&page_size={{ page_size }}">{{ p }}</a>
+            {% elif p == 4 or p == total_pages - 3 %}
+            <span>...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="?search={{ search or '' }}&status={{ status_filter or '' }}&page={{ page + 1 }}&page_size={{ page_size }}">下一页</a>
+        {% else %}
+        <span class="disabled">下一页</span>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
