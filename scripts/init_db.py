@@ -82,7 +82,7 @@ def insert_seed_data_via_orm() -> None:
             Contract(
                 title="2024年度办公用品采购合同",
                 contract_no="HT-2024-001",
-                parties='["恒通商贸有限公司", "瑞达办公用品供应中心"]',
+                parties='[{"name": "恒通商贸有限公司", "role": "甲方"}, {"name": "瑞达办公用品供应中心", "role": "乙方"}]',
                 amount=150000.00,
                 status="active",
                 sign_date="2024-01-15",
@@ -93,7 +93,7 @@ def insert_seed_data_via_orm() -> None:
             Contract(
                 title="IT系统运维服务合同",
                 contract_no="HT-2024-002",
-                parties='["云帆科技有限公司", "中软信息技术服务有限公司"]',
+                parties='[{"name": "云帆科技有限公司", "role": "甲方"}, {"name": "中软信息技术服务有限公司", "role": "乙方"}]',
                 amount=480000.00,
                 status="pending_review",
                 sign_date=None,
@@ -104,7 +104,7 @@ def insert_seed_data_via_orm() -> None:
             Contract(
                 title="会议室改造装修合同（草案）",
                 contract_no="HT-2025-001",
-                parties='["恒通商贸有限公司", "鹏程装饰工程有限公司"]',
+                parties='[{"name": "恒通商贸有限公司", "role": "甲方"}, {"name": "鹏程装饰工程有限公司", "role": "乙方"}]',
                 amount=320000.00,
                 status="draft",
                 content="第一条 工程概况：对甲方办公楼3层A区会议室进行装修改造...",

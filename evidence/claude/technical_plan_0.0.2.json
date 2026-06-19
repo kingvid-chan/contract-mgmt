@@ -1,0 +1,6 @@
+{
+  "iteration": "0.0.2",
+  "summary": "修复 parties 字段类型不匹配导致的合同列表 HTTP 500。更新 seed 数据和 SQL 迁移脚本中的 parties JSON 格式，并在 _contract_to_response 添加向后兼容转换。",
+  "files_changed": ["scripts/init_db.py", "migrations/002_seed_data.sql", "app/services/contract.py"],
+  "commit": "ffba507ae7cc592edccbb824af752eb98d9af5b4"
+}

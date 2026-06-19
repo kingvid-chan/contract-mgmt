@@ -1,0 +1,9 @@
+{
+  "iteration": "0.0.2",
+  "date": "2026-06-20T18:00:00+00:00",
+  "tests_passed": 45,
+  "tests_failed": 0,
+  "tests_total": 45,
+  "verdict": "PASS",
+  "summary": "全部 45 个测试通过：auth(9), users(10), contracts(15), attachments(11)"
+}

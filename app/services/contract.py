@@ -44,6 +44,11 @@ def _contract_to_response(c: Contract) -> ContractResponse:
     except (json.JSONDecodeError, TypeError):
         parties = []
 
+    # Backward compatibility: if parties is a list of plain strings (old seed
+    # data format), convert each to a PartyItem dict with a default role.
+    if parties and isinstance(parties, list) and isinstance(parties[0], str):
+        parties = [{"name": p, "role": "签约方"} for p in parties]
+
     return ContractResponse(
         id=c.id,
         title=c.title,
