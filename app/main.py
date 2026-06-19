@@ -10,6 +10,7 @@ from app.config import settings
 from app.database import engine, Base
 from app.middleware.cache_control import CacheControlMiddleware
 from app.routers import auth as auth_router
+from app.routers import users as users_router
 from app.models import User, Contract, Attachment, AuditLog  # noqa: F401
 
 
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(auth_router.router)
+    app.include_router(users_router.router)
 
     # Health check
     @app.get(f"{settings.base_path}/healthz")
