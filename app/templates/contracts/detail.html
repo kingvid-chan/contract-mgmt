@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}{{ contract.title }} - 合同管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title">{{ contract.title }}</h2>
+            <span class="status-badge status-{{ contract.status }}" style="margin-left:8px;">
+                {% if contract.status == 'draft' %}草稿
+                {% elif contract.status == 'pending_review' %}待审核
+                {% elif contract.status == 'active' %}生效中
+                {% elif contract.status == 'expired' %}已到期
+                {% elif contract.status == 'terminated' %}已终止
+                {% endif %}
+            </span>
+        </div>
+        <div class="btn-group">
+            {% if contract.status in ('draft', 'pending_review') %}
+            <a href="/projects/contract-mgmt/contracts/{{ contract.id }}/edit" class="btn btn-sm btn-secondary">编辑</a>
+            {% endif %}
+            {% if current_user.role == 'admin' or (contract.created_by == current_user.id and contract.status == 'draft') %}
+            <button class="btn btn-sm btn-danger" onclick="confirmDelete('/projects/contract-mgmt/api/contracts/{{ contract.id }}', '合同 {{ contract.contract_no }}')">删除</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Contract info -->
+    <div class="detail-grid">
+        <div>
+            <div class="detail-label">合同编号</div>
+            <div class="detail-value">{{ contract.contract_no }}</div>
+        </div>
+        <div>
+            <div class="detail-label">合同金额</div>
+            <div class="detail-value amount">¥ {{ '{:,.2f}'.format(contract.amount) }}</div>
+        </div>
+        <div>
+            <div class="detail-label">签订日期</div>
+            <div class="detail-value">{{ contract.sign_date or '未填写' }}</div>
+        </div>
+        <div>
+            <div class="detail-label">到期日期</div>
+            <div class="detail-value">{{ contract.expiry_date or '未填写' }}</div>
+        </div>
+        <div>
+            <div class="detail-label">创建人</div>
+            <div class="detail-value">{{ contract.created_by_username or '-' }}</div>
+        </div>
+        <div>
+            <div class="detail-label">创建时间</div>
+            <div class="detail-value">{{ contract.created_at[:19] if contract.created_at else '-' }}</div>
+        </div>
+        <div class="detail-full">
+            <div class="detail-label">签约方</div>
+            <div class="detail-value">
+                {% for p in contract.parties %}
+                <span style="margin-right:16px;">{{ p.role }}：{{ p.name }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% if contract.content %}
+        <div class="detail-full">
+            <div class="detail-label">合同内容</div>
+            <div class="detail-value" style="white-space:pre-wrap;">{{ contract.content }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Status actions -->
+    {% if contract.allowed_transitions %}
+    <div class="mt-4" style="padding-top: 16px; border-top: 1px solid var(--gray-200);">
+        <h3 style="font-size: 15px; margin-bottom: 12px;">状态操作</h3>
+        <div class="btn-group">
+            {% for target in contract.allowed_transitions %}
+                {% if target == 'pending_review' %}
+                <button class="btn btn-warning" onclick="confirmStatusChange('/projects/contract-mgmt/api/contracts/{{ contract.id }}/status', 'pending_review')">提交审核</button>
+                {% elif target == 'active' %}
+                <button class="btn btn-success" onclick="confirmStatusChange('/projects/contract-mgmt/api/contracts/{{ contract.id }}/status', 'active')">审核通过</button>
+                {% elif target == 'draft' %}
+                <button class="btn btn-secondary" onclick="confirmStatusChange('/projects/contract-mgmt/api/contracts/{{ contract.id }}/status', 'draft')">退回修改</button>
+                {% elif target == 'expired' %}
+                <button class="btn btn-secondary" onclick="confirmStatusChange('/projects/contract-mgmt/api/contracts/{{ contract.id }}/status', 'expired')">标记到期</button>
+                {% elif target == 'terminated' %}
+                <button class="btn btn-danger" onclick="confirmStatusChange('/projects/contract-mgmt/api/contracts/{{ contract.id }}/status', 'terminated')">终止合同</button>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Attachments -->
+<div class="card">
+    <div class="card-header">
+        <h3 style="font-size: 15px;">附件 ({{ contract.attachments|length }})</h3>
+    </div>
+
+    {% if contract.attachments %}
+    <div class="attachment-list">
+        {% for a in contract.attachments %}
+        <div class="attachment-item">
+            <div class="attachment-info">
+                <span>📎</span>
+                <span class="attachment-name">{{ a.original_name }}</span>
+                <span class="attachment-size">
+                    {% if a.file_size >= 1048576 %}
+                    {{ '%.2f'|format(a.file_size / 1048576) }} MB
+                    {% elif a.file_size >= 1024 %}
+                    {{ '%.1f'|format(a.file_size / 1024) }} KB
+                    {% else %}
+                    {{ a.file_size }} B
+                    {% endif %}
+                </span>
+            </div>
+            <div class="attachment-actions">
+                <a href="/projects/contract-mgmt/api/attachments/{{ a.id }}/download" class="btn btn-sm btn-primary">下载</a>
+                <button class="btn btn-sm btn-danger" onclick="confirmDelete('/projects/contract-mgmt/api/attachments/{{ a.id }}', '附件 {{ a.original_name }}')">删除</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📎</div>
+        <p>暂无附件</p>
+    </div>
+    {% endif %}
+
+    <form id="upload-form" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200);">
+        <div class="form-inline">
+            <div class="form-group" style="flex:1;">
+                <label class="form-label" for="attach-file">上传附件（支持 PDF、DOC、DOCX，最大 10MB）</label>
+                <input type="file" id="attach-file" class="form-input" accept=".pdf,.doc,.docx">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="uploadFile()">上传</button>
+        </div>
+        <div id="upload-preview" style="margin-top: 8px; font-size: 13px; color: var(--gray-500);"></div>
+        <div id="upload-error" style="margin-top: 4px; font-size: 12px; color: var(--danger); display:none;"></div>
+    </form>
+</div>
+
+<script>
+initUploadPreview('attach-file', 'upload-preview');
+
+function uploadFile() {
+    var input = document.getElementById('attach-file');
+    var file = input.files[0];
+    if (!file) { alert('请选择文件'); return; }
+    var errEl = document.getElementById('upload-error');
+    errEl.style.display = 'none';
+
+    var formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/projects/contract-mgmt/api/contracts/{{ contract.id }}/attachments', {
+        method: 'POST',
+        body: formData,
+    }).then(function (r) {
+        if (r.ok) {
+            window.location.reload();
+        } else {
+            r.json().then(function (d) {
+                errEl.textContent = d.detail;
+                errEl.style.display = 'block';
+            });
+        }
+    });
+}
+</script>
+
+<!-- Audit log timeline -->
+<div class="card">
+    <div class="card-header">
+        <h3 style="font-size: 15px;">操作记录</h3>
+    </div>
+    {% if audit_logs %}
+    <div class="audit-timeline">
+        {% for log in audit_logs %}
+        <div class="audit-item">
+            <span class="audit-time">{{ log.created_at[:19] if log.created_at else '-' }}</span>
+            <span class="audit-action">
+                {% if log.action == 'contract_create' %}创建了合同
+                {% elif log.action == 'contract_update' %}修改了合同
+                {% elif log.action == 'contract_status_change' %}变更状态
+                {% elif log.action == 'contract_delete' %}删除了合同
+                {% elif log.action == 'attachment_upload' %}上传了附件
+                {% elif log.action == 'attachment_delete' %}删除了附件
+                {% else %}{{ log.action }}
+                {% endif %}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:24px;">
+        <p>暂无操作记录</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
