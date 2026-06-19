@@ -13,6 +13,7 @@ from app.routers import auth as auth_router
 from app.routers import users as users_router
 from app.routers import contracts as contracts_router
 from app.routers import attachments as attachments_router
+from app.routers import pages as pages_router
 from app.models import User, Contract, Attachment, AuditLog  # noqa: F401
 
 
@@ -35,6 +36,14 @@ def create_app() -> FastAPI:
     app.include_router(users_router.router)
     app.include_router(contracts_router.router)
     app.include_router(attachments_router.router)
+    app.include_router(pages_router.router)
+
+    # Static files
+    app.mount(
+        f"{settings.base_path}/static",
+        StaticFiles(directory="app/static"),
+        name="static",
+    )
 
     # Health check
     @app.get(f"{settings.base_path}/healthz")

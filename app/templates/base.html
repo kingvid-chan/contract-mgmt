@@ -20,20 +20,20 @@
                 {% if current_user %}
                 <span class="nav-username">{{ current_user.display_name }} <span class="nav-role">({{ '管理员' if current_user.role == 'admin' else '用户' }})</span></span>
                 <a href="/projects/contract-mgmt/api/auth/logout" class="nav-logout" onclick="event.preventDefault(); doLogout()">登出</a>
+                {% else %}
+                <a href="/projects/contract-mgmt/login" class="nav-link">登录</a>
                 {% endif %}
             </div>
         </div>
     </nav>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="flash-container">
-        {% for category, message in messages %}
-        <div class="flash-message flash-{{ category }}" data-auto-dismiss="true">{{ message }}</div>
+        {% for msg in messages %}
+        <div class="flash-message flash-{{ msg.category or 'info' }}" data-auto-dismiss="true">{{ msg.text }}</div>
         {% endfor %}
     </div>
     {% endif %}
-    {% endwith %}
 
     <main class="main-content">
         {% block content %}{% endblock %}
