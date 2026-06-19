@@ -1,0 +1,17 @@
+{
+  "iteration": "0.0.1",
+  "verifier": "hermes",
+  "verified_commit": "85cd89b8daa2072dd2f5e4695f3669e730f635a9",
+  "command": ".venv/bin/python -m pytest tests/ -v --tb=short",
+  "exit_code": 0,
+  "total": 45,
+  "passed": 45,
+  "failed": 0,
+  "runtime_seconds": 25.14,
+  "modules": {
+    "test_auth.py": {"count": 9, "passed": 9},
+    "test_users.py": {"count": 10, "passed": 10},
+    "test_contracts.py": {"count": 15, "passed": 15},
+    "test_attachments.py": {"count": 11, "passed": 11}
+  }
+}
