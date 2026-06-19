@@ -1,0 +1,9 @@
+{
+  "iteration": "0.0.1",
+  "health_url": "https://120.24.117.67/projects/contract-mgmt/healthz",
+  "status_code": 200,
+  "response": {"status":"ok","version":"0.0.1"},
+  "login_page_url": "https://120.24.117.67/projects/contract-mgmt/login",
+  "login_status_code": 200,
+  "checked_at": "2026-06-20T01:49:30Z"
+}

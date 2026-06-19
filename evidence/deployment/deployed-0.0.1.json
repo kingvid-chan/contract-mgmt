@@ -1,0 +1,14 @@
+{
+  "iteration": "0.0.1",
+  "server": "aliyun-cowork",
+  "deploy_root": "/srv/codingagent/contract-mgmt",
+  "port": 19050,
+  "service_name": "codingagent-contract-mgmt",
+  "public_url": "https://120.24.117.67/projects/contract-mgmt/",
+  "health_url": "https://120.24.117.67/projects/contract-mgmt/healthz",
+  "health_status": 200,
+  "health_body": {"status":"ok","version":"0.0.1"},
+  "login_status": 200,
+  "nginx_proxy": "127.0.0.1:19050",
+  "deployed_at": "2026-06-20T01:49:00Z"
+}

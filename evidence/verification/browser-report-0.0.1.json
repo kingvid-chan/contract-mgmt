@@ -1,0 +1,147 @@
+{
+  "schema_version": 3,
+  "release_version": "0.0.1",
+  "public_url": "http://120.24.117.67/projects/contract-mgmt/",
+  "final_url": "https://120.24.117.67/projects/contract-mgmt/contracts",
+  "base_path_ok": true,
+  "document_response_headers": {
+    "login_page": {
+      "content_type": "text/html; charset=utf-8",
+      "cache_control": "no-cache"
+    },
+    "contract_list": {
+      "content_type": "application/json",
+      "cache_control": "no-cache"
+    }
+  },
+  "static_assets": [
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/static/css/style.css?v=0.0.1",
+      "type": "stylesheet",
+      "status": 200,
+      "in_base_path": true
+    },
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/static/js/app.js?v=0.0.1",
+      "type": "script",
+      "status": 200,
+      "in_base_path": true
+    }
+  ],
+  "stylesheets": [
+    {
+      "href_attribute": "/projects/contract-mgmt/static/css/style.css?v=0.0.1",
+      "resolved_url": "https://120.24.117.67/projects/contract-mgmt/static/css/style.css?v=0.0.1",
+      "in_base_path": true,
+      "curl_status": 200
+    }
+  ],
+  "asset_probes": [
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/static/css/style.css?v=0.0.1",
+      "status": 200
+    },
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/static/js/app.js?v=0.0.1",
+      "status": 200
+    }
+  ],
+  "pages": [
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/login",
+      "title": "登录 - 合同管理系统",
+      "ok": true,
+      "screenshot": "evidence/verification/login-0.0.1.png"
+    },
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/users",
+      "title": "用户管理 - 合同管理系统",
+      "ok": true,
+      "screenshot": "evidence/verification/users-0.0.1.png"
+    },
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/contracts/new",
+      "title": "新建合同 - 合同管理系统",
+      "ok": true,
+      "screenshot": "evidence/verification/contract-new-0.0.1.png"
+    },
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/contracts",
+      "title": "",
+      "ok": false,
+      "error": "HTTP 500 - 服务器内部错误。seed 数据 parties 字段为字符串类型，Pydantic 模型期望 PartyItem 对象。错误详情：2 validation errors for ContractResponse: parties.0/parties.1 - Input should be a valid dictionary or instance of PartyItem",
+      "screenshot": "evidence/verification/contract-list-error-0.0.1.png"
+    }
+  ],
+  "workflow_checks": [
+    {
+      "name": "登录流程",
+      "ok": true,
+      "detail": "admin/admin123 登录成功，设置了 session cookie，重定向到 /contracts"
+    },
+    {
+      "name": "用户管理",
+      "ok": true,
+      "detail": "用户列表正常显示 admin 和 user 两个演示账号"
+    },
+    {
+      "name": "合同创建表单",
+      "ok": true,
+      "detail": "新建合同表单正常渲染，包含标题、编号、签约方、金额、日期、内容等字段"
+    },
+    {
+      "name": "合同列表",
+      "ok": false,
+      "detail": "合同列表页面返回 500 错误，数据库 parties 字段格式不匹配模型定义"
+    }
+  ],
+  "failed_requests": [
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/contracts",
+      "status": 500,
+      "error": "服务器内部错误 - parties 字段类型不匹配"
+    }
+  ],
+  "http_errors": [
+    {
+      "url": "https://120.24.117.67/projects/contract-mgmt/contracts",
+      "status": 500,
+      "body": "{\"detail\":\"服务器内部错误\"}"
+    }
+  ],
+  "console_errors": [],
+  "screenshots": [
+    "evidence/verification/login-0.0.1.png",
+    "evidence/verification/users-0.0.1.png",
+    "evidence/verification/contract-new-0.0.1.png",
+    "evidence/verification/contract-list-error-0.0.1.png"
+  ],
+  "visual_review": {
+    "login_page": {
+      "verdict": "pass",
+      "issues": [],
+      "provider": "kimi",
+      "model": "kimi-k2.5"
+    },
+    "users_page": {
+      "verdict": "pass",
+      "issues": [],
+      "provider": "kimi",
+      "model": "kimi-k2.5"
+    },
+    "contract_new_page": {
+      "verdict": "pass",
+      "issues": [],
+      "provider": "kimi",
+      "model": "kimi-k2.5"
+    },
+    "contract_list_page": {
+      "verdict": "fail",
+      "issues": ["浏览器显示 JSON 错误响应而非 HTML 页面", "HTTP 500 服务器内部错误"],
+      "provider": "kimi",
+      "model": "kimi-k2.5"
+    }
+  },
+  "overall_verdict": "fail",
+  "failure_summary": "合同列表页面 HTTP 500，根因：seed_data.py 中 parties 字段为字符串列表 ['恒通商贸有限公司', '鹏程装饰工程有限公司']，但 Pydantic ContractResponse 模型期望 parties 为 List[PartyItem]（每个 PartyItem 包含 name 和 role 字段）。需修复 seed 数据格式并确保创建合同 API 返回数据与模型一致。登录、用户管理、合同创建表单页面正常。"
+}

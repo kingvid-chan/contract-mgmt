@@ -1,0 +1,10 @@
+{
+  "iteration": "0.0.2",
+  "tasks": [
+    "更新 scripts/init_db.py 中 3 条合同的 parties 格式为 PartyItem 对象",
+    "更新 migrations/002_seed_data.sql 中 parties 格式",
+    "在 _contract_to_response 添加向后兼容处理",
+    "运行 pytest 确保 45 测试通过"
+  ],
+  "commit": "ffba507ae7cc592edccbb824af752eb98d9af5b4"
+}

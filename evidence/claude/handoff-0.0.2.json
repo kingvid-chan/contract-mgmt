@@ -1,8 +1,27 @@
 {
   "iteration": "0.0.2",
+  "project": "contract-mgmt",
+  "project_name": "合同管理系统",
+  "branch": "iteration/0.0.2",
   "ready_for_verification": true,
-  "tests_passed": 45,
-  "tests_failed": 0,
-  "impl_file_count": 3,
-  "changes_summary": "修复 parties 字段类型不匹配：更新 seed 数据和 SQL 迁移脚本，添加向后兼容处理"
+  "handoff_date": "2026-06-20T17:55:00+00:00",
+  "implementation_summary": "修复合同列表 HTTP 500 错误。根因：parties 字段在 seed 数据和 SQL 迁移中存储为字符串列表，但 Pydantic 模型期望 PartyItem(name, role) 对象。修复：更新 scripts/init_db.py 和 migrations/002_seed_data.sql 中 3 条合同的 parties 为 PartyItem JSON 格式，并在 _contract_to_response 添加向后兼容逻辑。",
+  "tests": {
+    "total": 45,
+    "passed": 45,
+    "failed": 0,
+    "runtime_seconds": 1.5,
+    "command": "pytest tests/ -v --tb=short"
+  },
+  "commits": [
+    "ffba507 fix: contract parties type mismatch causing HTTP 500"
+  ],
+  "files_modified": [
+    "scripts/init_db.py",
+    "migrations/002_seed_data.sql",
+    "app/services/contract.py"
+  ],
+  "known_issues": [],
+  "technical_plan": "evidence/claude/technical_plan_0.0.2.json",
+  "tasks_defined": "evidence/claude/tasks_0.0.2.json"
 }
