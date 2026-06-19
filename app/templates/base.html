@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}合同管理系统{% endblock %}</title>
+    <link rel="stylesheet" href="/projects/contract-mgmt/static/css/style.css?v=0.0.1">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/projects/contract-mgmt/contracts" class="nav-brand">📋 合同管理系统</a>
+            <div class="nav-links">
+                <a href="/projects/contract-mgmt/contracts" class="nav-link">合同管理</a>
+                {% if current_user and current_user.role == 'admin' %}
+                <a href="/projects/contract-mgmt/users" class="nav-link">用户管理</a>
+                {% endif %}
+            </div>
+            <div class="nav-user">
+                {% if current_user %}
+                <span class="nav-username">{{ current_user.display_name }} <span class="nav-role">({{ '管理员' if current_user.role == 'admin' else '用户' }})</span></span>
+                <a href="/projects/contract-mgmt/api/auth/logout" class="nav-logout" onclick="event.preventDefault(); doLogout()">登出</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="flash-message flash-{{ category }}" data-auto-dismiss="true">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>合同管理系统 v0.0.1 &copy; 2026</p>
+    </footer>
+
+    <div id="confirm-modal" class="modal" style="display:none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <h3 class="modal-title"></h3>
+            <p class="modal-body"></p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" id="modal-confirm-btn">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/projects/contract-mgmt/static/js/app.js?v=0.0.1"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
