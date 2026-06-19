@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}用户管理 - 合同管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">用户管理</h2>
+        <a href="/projects/contract-mgmt/users/new" class="btn btn-primary">+ 创建用户</a>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>显示名</th>
+                    <th>角色</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if users %}
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td><strong>{{ u.username }}</strong></td>
+                    <td>{{ u.display_name }}</td>
+                    <td>
+                        <span class="status-badge {% if u.role == 'admin' %}status-active{% else %}status-draft{% endif %}">
+                            {{ '管理员' if u.role == 'admin' else '用户' }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge {% if u.is_active %}status-active{% else %}status-terminated{% endif %}">
+                            {{ '启用' if u.is_active else '禁用' }}
+                        </span>
+                    </td>
+                    <td>{{ u.created_at[:10] if u.created_at else '-' }}</td>
+                    <td class="actions">
+                        <a href="/projects/contract-mgmt/users/{{ u.id }}/edit" class="btn btn-sm btn-secondary">编辑</a>
+                        <button class="btn btn-sm {% if u.is_active %}btn-warning{% else %}btn-success{% endif %}"
+                                onclick="toggleUserStatus({{ u.id }})"
+                                {% if u.id == current_user.id %}disabled title="不能操作自己"{% endif %}>
+                            {{ '禁用' if u.is_active else '启用' }}
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center" style="padding:32px; color: var(--gray-500);">暂无用户</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
