@@ -1,0 +1,8 @@
+{
+  "iteration": "0.0.2",
+  "ready_for_verification": true,
+  "tests_passed": 45,
+  "tests_failed": 0,
+  "impl_file_count": 3,
+  "changes_summary": "修复 parties 字段类型不匹配：更新 seed 数据和 SQL 迁移脚本，添加向后兼容处理"
+}
