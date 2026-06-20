@@ -90,3 +90,93 @@ class TestAuthMe:
     def test_me_unauthenticated(self, client: TestClient):
         r = client.get("/projects/contract-mgmt/api/auth/me")
         assert r.status_code == 401
+
+
+class TestPageRouteRedirect:
+    """Unauthenticated access to page routes must return 302 → /login,
+    not 401 JSON."""
+
+    def test_contracts_page_unauthenticated_redirects(self, client: TestClient):
+        r = client.get(
+            "/projects/contract-mgmt/contracts",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/projects/contract-mgmt/login"
+
+    def test_contracts_new_unauthenticated_redirects(self, client: TestClient):
+        r = client.get(
+            "/projects/contract-mgmt/contracts/new",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/projects/contract-mgmt/login"
+
+    def test_contracts_detail_unauthenticated_redirects(self, client: TestClient):
+        r = client.get(
+            "/projects/contract-mgmt/contracts/1",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/projects/contract-mgmt/login"
+
+    def test_contracts_edit_unauthenticated_redirects(self, client: TestClient):
+        r = client.get(
+            "/projects/contract-mgmt/contracts/1/edit",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/projects/contract-mgmt/login"
+
+    def test_users_page_unauthenticated_redirects(self, client: TestClient):
+        r = client.get(
+            "/projects/contract-mgmt/users",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/projects/contract-mgmt/login"
+
+    def test_users_new_unauthenticated_redirects(self, client: TestClient):
+        r = client.get(
+            "/projects/contract-mgmt/users/new",
+            follow_redirects=False,
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/projects/contract-mgmt/login"
+
+    def test_login_page_accessible_without_auth(self, client: TestClient):
+        """/login must NOT be protected, otherwise redirect loop happens."""
+        r = client.get("/projects/contract-mgmt/login")
+        assert r.status_code == 200
+
+    def test_root_redirects_to_contracts(self, client: TestClient):
+        """Root / should redirect to /contracts (307 default in Starlette)."""
+        r = client.get("/projects/contract-mgmt/", follow_redirects=False)
+        assert r.status_code in (302, 307)
+        assert r.headers["location"] == "/projects/contract-mgmt/contracts"
+
+    def test_contracts_page_authenticated_works(self, admin_client: TestClient):
+        """Logged-in user sees contracts page normally."""
+        r = admin_client.get("/projects/contract-mgmt/contracts")
+        assert r.status_code == 200
+
+    def test_root_authenticated_works(self, admin_client: TestClient):
+        """Logged-in user at root redirects to contracts page."""
+        r = admin_client.get(
+            "/projects/contract-mgmt/",
+            follow_redirects=False,
+        )
+        assert r.status_code in (302, 307)
+        assert r.headers["location"] == "/projects/contract-mgmt/contracts"
+
+    def test_api_routes_still_401_for_unauthenticated(self, client: TestClient):
+        """API routes must continue to return 401 JSON, not 302."""
+        r = client.get("/projects/contract-mgmt/api/auth/me")
+        assert r.status_code == 401
+        assert r.json()["detail"] == "未登录，请先登录"
+
+    def test_api_routes_still_work_for_authenticated(self, admin_client: TestClient):
+        """API routes must continue to work normally for logged-in users."""
+        r = admin_client.get("/projects/contract-mgmt/api/auth/me")
+        assert r.status_code == 200
+        assert r.json()["username"] == "admin"

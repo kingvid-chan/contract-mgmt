@@ -4,13 +4,14 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, SessionLocal
 import app.database as db_mod
+from app.dependencies import LoginRequired
 from app.middleware.cache_control import CacheControlMiddleware
 from app.models import User, Contract, Attachment, AuditLog  # noqa: F401
 from app.routers import auth as auth_router
@@ -75,6 +76,15 @@ def create_app() -> FastAPI:
         https_only=False,
     )
     app.add_middleware(CacheControlMiddleware)
+
+    # ---------- Exception handlers ----------
+    @app.exception_handler(LoginRequired)
+    async def login_required_handler(request: Request, _exc: LoginRequired):
+        """Convert LoginRequired into a 302 redirect to the login page."""
+        return RedirectResponse(
+            url=f"{settings.base_path}/login",
+            status_code=302,
+        )
 
     # ---------- API routers ----------
     app.include_router(auth_router.router)

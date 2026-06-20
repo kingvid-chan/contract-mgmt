@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     session_ttl_hours: int = 24
     max_upload_size_mb: int = 10
     base_path: str = "/projects/contract-mgmt"
-    app_version: str = "0.0.1"
+    app_version: str = "0.0.3"
     log_level: str = "INFO"
 
     model_config = {

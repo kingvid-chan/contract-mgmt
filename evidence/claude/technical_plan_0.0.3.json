@@ -1,0 +1,15 @@
+{
+  "iteration": "0.0.3",
+  "summary": "修复未登录用户访问页面路由（如 /contracts）时返回 HTTP 401 JSON 而非 302 重定向到 /login 的 bug。通过在 dependencies.py 中新增 LoginRequired 自定义异常和 get_current_user_or_redirect / require_admin_or_redirect 依赖，在 main.py 中注册 LoginRequired 异常处理器返回 302 重定向，并在 pages.py 中切换页面路由使用新的重定向版依赖。API 路由保持使用 get_current_user，继续返回 401 JSON。",
+  "files_to_modify": [
+    "app/dependencies.py",
+    "app/main.py",
+    "app/routers/pages.py"
+  ],
+  "approach": "1. 在 dependencies.py 中定义 LoginRequired 自定义异常类；新增 get_current_user_or_redirect() 依赖（未登录/用户不存在时抛出 LoginRequired 而非 HTTPException(401)，is_active 检查保持 403）；新增 require_admin_or_redirect() 依赖（基于 get_current_user_or_redirect + admin 角色检查）。2. 在 main.py 的 create_app() 中注册 LoginRequired 异常处理器，返回 302 RedirectResponse 到 /login 页面。3. 在 pages.py 中将页面路由的 get_current_user 替换为 get_current_user_or_redirect，将 require_admin 替换为 require_admin_or_redirect。API 路由不受影响。4. /login 路由本身不添加认证依赖，避免重定向循环。",
+  "risks": [
+    "LoginRequired 异常可能被其他中间件拦截 — 已在 create_app() 中于 exception_handler 注册，FastAPI 按注册顺序逆序处理，应正确匹配",
+    "get_current_user_or_redirect 中 is_active 检查仍使用 HTTPException(403) — 被禁用用户访问页面时仍会收到 403 JSON，此为预期行为（用户存在但被禁用）",
+    "测试需覆盖 unauthenticated client 访问页面路由返回 302，以及 authenticated client 正常访问页面路由返回 200"
+  ]
+}

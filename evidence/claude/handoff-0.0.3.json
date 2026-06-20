@@ -1,0 +1,16 @@
+{
+  "iteration": "0.0.3",
+  "ready_for_verification": true,
+  "tests_passed": 57,
+  "tests_failed": 0,
+  "impl_file_count": 6,
+  "files_modified": [
+    "app/dependencies.py",
+    "app/main.py",
+    "app/routers/pages.py",
+    "app/config.py",
+    "app/templates/base.html",
+    "tests/test_auth.py"
+  ],
+  "summary": "修复未登录用户访问页面路由时返回 HTTP 401 JSON 而非 302 重定向到 /login 的 bug。通过引入 LoginRequired 自定义异常 + get_current_user_or_redirect / require_admin_or_redirect 依赖 + 异常处理器，页面路由（/contracts、/contracts/new、/contracts/{id}、/contracts/{id}/edit、/users、/users/new、/users/{id}/edit）在未登录时返回 302 重定向到 /login；API 路由（/api/*）保持 401 JSON 响应不变。/login 路由本身不受认证保护，避免重定向循环。新增 12 个测试覆盖重定向行为，全部 57 个测试通过。版本号提升至 0.0.3。"
+}

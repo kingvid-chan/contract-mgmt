@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import get_current_user, require_admin
+from app.dependencies import get_current_user_or_redirect, require_admin_or_redirect
 from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.services import contract as contract_service
@@ -43,7 +43,7 @@ def login_page(request: Request, error: str = None):
 def users_list(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_admin_or_redirect),
 ):
     users = user_service.get_users(db, limit=100)
     return templates.TemplateResponse(
@@ -55,7 +55,7 @@ def users_list(
 @router.get("/users/new")
 def users_new(
     request: Request,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_admin_or_redirect),
 ):
     return templates.TemplateResponse(
         request, "users/form.html",
@@ -68,7 +68,7 @@ def users_edit(
     user_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_admin_or_redirect),
 ):
     u = user_service.get_user_by_id(db, user_id)
     if u is None:
@@ -92,7 +92,7 @@ def contracts_list(
     page: int = 1,
     page_size: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_or_redirect),
 ):
     skip = (page - 1) * page_size
     contracts, total = contract_service.get_contracts(
@@ -115,7 +115,7 @@ def contracts_list(
 @router.get("/contracts/new")
 def contracts_new(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_or_redirect),
 ):
     return templates.TemplateResponse(
         request, "contracts/form.html",
@@ -128,7 +128,7 @@ def contracts_edit(
     contract_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_or_redirect),
 ):
     c = contract_service.get_contract_by_id(db, contract_id)
     if c is None:
@@ -154,7 +154,7 @@ def contracts_detail(
     contract_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_or_redirect),
 ):
     detail = contract_service.get_contract_detail(db, contract_id)
     if detail is None:

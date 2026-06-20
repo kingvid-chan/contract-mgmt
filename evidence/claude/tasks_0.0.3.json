@@ -1,0 +1,30 @@
+{
+  "iteration": "0.0.3",
+  "tasks": [
+    {
+      "id": "T001",
+      "description": "在 dependencies.py 中新增 LoginRequired 自定义异常类、get_current_user_or_redirect 和 require_admin_or_redirect 依赖函数",
+      "files": ["app/dependencies.py"]
+    },
+    {
+      "id": "T002",
+      "description": "在 main.py 中注册 LoginRequired 异常处理器，返回 302 重定向到 /login",
+      "files": ["app/main.py"]
+    },
+    {
+      "id": "T003",
+      "description": "在 pages.py 中将页面路由的认证依赖从 get_current_user/require_admin 替换为 get_current_user_or_redirect/require_admin_or_redirect，确保 /login 路由不受认证保护",
+      "files": ["app/routers/pages.py"]
+    },
+    {
+      "id": "T004",
+      "description": "运行现有测试套件确保无回归，添加页面路由 302 重定向行为测试",
+      "files": ["tests/test_auth.py"]
+    },
+    {
+      "id": "T005",
+      "description": "输出 handoff-0.0.3.json 交付文件",
+      "files": ["evidence/claude/handoff-0.0.3.json"]
+    }
+  ]
+}
