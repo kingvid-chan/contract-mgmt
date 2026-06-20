@@ -1,0 +1,6 @@
+{
+  "iteration": "0.0.3",
+  "tag": "0.0.3",
+  "commit": "2439362b2d14ac1a71a14a09b9ba6424e7574d2c",
+  "message": "Release 0.0.3: fix unauthenticated page routes 302 redirect instead of 401 JSON"
+}
