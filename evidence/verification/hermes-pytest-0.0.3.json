@@ -1,0 +1,25 @@
+{
+  "iteration": "0.0.3",
+  "test_runner": "pytest",
+  "timestamp": "2026-06-20T08:59:00+00:00",
+  "result": {
+    "passed": 57,
+    "failed": 0,
+    "total": 57,
+    "duration_seconds": 29.51
+  },
+  "new_tests_relevant_to_fix": [
+    "TestPageRouteRedirect::test_contracts_page_unauthenticated_redirects",
+    "TestPageRouteRedirect::test_contracts_new_unauthenticated_redirects",
+    "TestPageRouteRedirect::test_contracts_detail_unauthenticated_redirects",
+    "TestPageRouteRedirect::test_contracts_edit_unauthenticated_redirects",
+    "TestPageRouteRedirect::test_users_page_unauthenticated_redirects",
+    "TestPageRouteRedirect::test_users_new_unauthenticated_redirects",
+    "TestPageRouteRedirect::test_login_page_accessible_without_auth",
+    "TestPageRouteRedirect::test_root_redirects_to_contracts",
+    "TestPageRouteRedirect::test_contracts_page_authenticated_works",
+    "TestPageRouteRedirect::test_root_authenticated_works",
+    "TestPageRouteRedirect::test_api_routes_still_401_for_unauthenticated",
+    "TestPageRouteRedirect::test_api_routes_still_work_for_authenticated"
+  ]
+}
