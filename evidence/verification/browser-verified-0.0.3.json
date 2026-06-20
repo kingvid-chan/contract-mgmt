@@ -1,0 +1,38 @@
+{
+  "iteration": "0.0.3",
+  "ok": true,
+  "public_url": "http://120.24.117.67/projects/contract-mgmt/",
+  "verification_type": "browser",
+  "timestamp": "2026-06-20T09:02:00+08:00",
+  "tests": [
+    {
+      "name": "unauthenticated /contracts redirect to /login",
+      "result": "pass",
+      "detail": "Navigated to /contracts without auth → 302 redirect to /login page with username/password form"
+    },
+    {
+      "name": "login page renders correctly",
+      "result": "pass",
+      "detail": "Login form displayed with 用户名/密码 fields, 登录 button, demo account hints. Version v0.0.3."
+    },
+    {
+      "name": "authenticated /contracts shows contract list",
+      "result": "pass",
+      "detail": "Logged in as admin/admin123, /contracts shows 4 contracts in table with status labels"
+    },
+    {
+      "name": "console has no errors",
+      "result": "pass",
+      "detail": "0 console messages, 0 JS errors"
+    },
+    {
+      "name": "CSS loads correctly",
+      "result": "pass",
+      "detail": "All styles loaded, modern card-based UI, blue theme, status color labels"
+    }
+  ],
+  "screenshots": [
+    "evidence/verification/browser_screenshot_8a513285e6b74e31933ed0737c5023ee.png",
+    "evidence/verification/browser_screenshot_d37da5dc3eea487496fa5f10d442746a.png"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "iteration": "0.0.3",
+  "port": 19050,
+  "server": "aliyun-cowork",
+  "public_url": "http://120.24.117.67/projects/contract-mgmt/",
+  "release_commit": "2439362b2d14ac1a71a14a09b9ba6424e7574d2c",
+  "deployed_at": "2026-06-20T09:01:17+08:00",
+  "status": "active"
+}

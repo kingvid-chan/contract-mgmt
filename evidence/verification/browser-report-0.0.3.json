@@ -1,0 +1,64 @@
+{
+  "schema_version": 3,
+  "public_url": "http://120.24.117.67/projects/contract-mgmt/",
+  "final_url": "http://120.24.117.67/projects/contract-mgmt/contracts",
+  "base_path_ok": true,
+  "release_version": "0.0.3",
+  "timestamp": "2026-06-20T09:02:00+08:00",
+  "pages": [
+    {
+      "url": "http://120.24.117.67/projects/contract-mgmt/contracts",
+      "title": "登录 - 合同管理系统",
+      "ok": true,
+      "notes": "未登录访问 /contracts 自动 302 重定向到 /login，显示登录表单"
+    },
+    {
+      "url": "http://120.24.117.67/projects/contract-mgmt/contracts",
+      "title": "合同列表 - 合同管理系统",
+      "ok": true,
+      "notes": "登录后合同列表正常显示，4条合同数据，导航栏完整"
+    }
+  ],
+  "workflow_checks": [
+    {
+      "name": "unauthenticated redirect to login",
+      "ok": true,
+      "detail": "访问 /contracts 未登录 → 302 重定向到 /login 页面"
+    },
+    {
+      "name": "login page renders correctly",
+      "ok": true,
+      "detail": "登录页显示用户名/密码输入框、登录按钮，版本号 v0.0.3"
+    },
+    {
+      "name": "login as admin and view contracts",
+      "ok": true,
+      "detail": "admin/admin123 登录成功，合同表格含4条记录"
+    },
+    {
+      "name": "no console errors",
+      "ok": true,
+      "detail": "所有页面 0 JS errors, 0 console messages"
+    }
+  ],
+  "failed_requests": [],
+  "http_errors": [],
+  "console_errors": [],
+  "static_assets": [],
+  "stylesheets": [],
+  "asset_probes": [],
+  "document_response_headers": {
+    "cache-control": "no-cache"
+  },
+  "visual_review": {
+    "verdict": "pass",
+    "issues": [],
+    "provider": "kimi-coding-cn",
+    "model": "kimi-k2-thinking-turbo",
+    "notes": "登录页面和合同列表页面视觉检查通过：布局正常、CSS样式完整、版本号v0.0.3正确显示、交互元素齐全"
+  },
+  "screenshots": [
+    "evidence/verification/browser_screenshot_8a513285e6b74e31933ed0737c5023ee.png",
+    "evidence/verification/browser_screenshot_d37da5dc3eea487496fa5f10d442746a.png"
+  ]
+}
